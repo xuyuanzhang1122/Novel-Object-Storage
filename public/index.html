@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Store</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f0f0f;color:#e0e0e0;min-height:100vh}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-box{background:#1a1a1a;padding:2rem;border-radius:12px;width:320px}
+.login-box h2{margin-bottom:1.5rem;text-align:center;color:#fff}
+.login-box input{width:100%;padding:.75rem;margin-bottom:1rem;background:#2a2a2a;border:1px solid #333;border-radius:8px;color:#fff;font-size:14px}
+.login-box button{width:100%;padding:.75rem;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:14px;cursor:pointer}
+.login-box button:hover{background:#2563eb}
+.login-box .err{color:#ef4444;font-size:13px;margin-bottom:.5rem;display:none}
+.app{display:none;max-width:1200px;margin:0 auto;padding:1rem}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:.5rem}
+.header h1{font-size:1.5rem;color:#fff}
+.header-actions{display:flex;gap:.5rem;align-items:center}
+.btn{padding:.5rem 1rem;border:none;border-radius:8px;cursor:pointer;font-size:13px;color:#fff}
+.btn-primary{background:#3b82f6}.btn-primary:hover{background:#2563eb}
+.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}
+.btn-secondary{background:#374151}.btn-secondary:hover{background:#4b5563}
+.btn-sm{padding:.35rem .75rem;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:#1a1a1a;padding:1rem;border-radius:10px;text-align:center}
+.stat-card .num{font-size:1.5rem;font-weight:700;color:#3b82f6}
+.stat-card .label{font-size:12px;color:#888;margin-top:.25rem}
+.toolbar{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.toolbar input,.toolbar select{padding:.5rem .75rem;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;font-size:13px}
+.toolbar input{flex:1;min-width:200px}
+.upload-zone{border:2px dashed #333;border-radius:12px;padding:2rem;text-align:center;margin-bottom:1.5rem;cursor:pointer;transition:border-color .2s}
+.upload-zone:hover,.upload-zone.drag{border-color:#3b82f6;background:#1a1a2a}
+.upload-zone input{display:none}
+.upload-zone p{color:#888;font-size:14px}
+.upload-progress{margin-bottom:1rem;display:none}
+.progress-bar{height:6px;background:#2a2a2a;border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:#3b82f6;transition:width .3s;width:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem}
+.card{background:#1a1a1a;border-radius:10px;overflow:hidden;position:relative;transition:transform .2s}
+.card:hover{transform:translateY(-2px)}
+.card-img{width:100%;height:160px;object-fit:cover;background:#2a2a2a;display:flex;align-items:center;justify-content:center}
+.card-img img{width:100%;height:100%;object-fit:cover}
+.card-img .icon{font-size:3rem}
+.card-body{padding:.75rem}
+.card-body .name{font-size:13px;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-body .meta{font-size:11px;color:#666;margin-top:.25rem}
+.card-actions{display:flex;gap:.25rem;margin-top:.5rem}
+.card-actions button{flex:1}
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100}
+.modal{background:#1a1a1a;border-radius:12px;padding:1.5rem;max-width:500px;width:90%;max-height:90vh;overflow-y:auto}
+.modal h3{margin-bottom:1rem;color:#fff}
+.modal input,.modal textarea{width:100%;padding:.5rem;margin-bottom:.75rem;background:#2a2a2a;border:1px solid #333;border-radius:6px;color:#fff;font-size:13px}
+.modal textarea{min-height:80px;resize:vertical}
+.modal .url-box{background:#0a0a0a;padding:.5rem;border-radius:6px;font-size:12px;color:#3b82f6;word-break:break-all;cursor:pointer;margin-bottom:.75rem}
+.toast{position:fixed;bottom:1rem;right:1rem;background:#1a1a1a;color:#fff;padding:.75rem 1.25rem;border-radius:8px;font-size:13px;z-index:200;display:none;border:1px solid #333}
+.empty{text-align:center;padding:3rem;color:#666}
+.pagination{display:flex;justify-content:center;gap:.5rem;margin-top:1.5rem}
+@media(max-width:600px){.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.card-img{height:120px}}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <h2>🗄️ Image Store</h2>
+    <div class="err" id="loginErr"></div>
+    <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
+    <button onclick="doLogin()">登录</button>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="header">
+    <h1>🗄️ Image Store</h1>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" onclick="showApiKeys()">API Keys</button>
+      <button class="btn btn-secondary btn-sm" onclick="doLogout()">退出</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.txt,.md,.html">
+    <p>📁 点击或拖拽上传文件（支持图片/视频/文档，最大 500MB）</p>
+  </div>
+  <div class="upload-progress" id="uploadProgress">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="搜索文件名、描述、标签...">
+    <select id="categoryFilter">
+      <option value="">全部类型</option>
+      <option value="image">图片</option>
+      <option value="video">视频</option>
+      <option value="document">文档</option>
+      <option value="other">其他</option>
+    </select>
+  </div>
+
+  <div class="grid" id="fileGrid"></div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let token = localStorage.getItem('token') || '';
+let currentPage = 1;
+
+// --- Auth ---
+async function doLogin() {
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
+  const res = await fetch(`${API}/api/login`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({username:u, password:p}), credentials:'include'
+  });
+  const data = await res.json();
+  if (data.ok) {
+    token = data.token;
+    localStorage.setItem('token', token);
+    showApp();
+  } else {
+    const err = document.getElementById('loginErr');
+    err.textContent = '用户名或密码错误';
+    err.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  fetch(`${API}/api/logout`, {method:'POST',credentials:'include'});
+  token = '';
+  localStorage.removeItem('token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginWrap').style.display = 'flex';
+}
+
+function headers() {
+  return {'Authorization': `Bearer ${token}`};
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch(`${API}/api/stats`, {headers: headers(), credentials:'include'});
+    return res.ok;
+  } catch { return false; }
+}
+
+// --- App Init ---
+async function showApp() {
+  if (!await checkAuth()) {
+    token = '';
+    localStorage.removeItem('token');
+    document.getElementById('loginWrap').style.display = 'flex';
+    return;
+  }
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadStats();
+  loadFiles();
+}
+
+// --- Stats ---
+async function loadStats() {
+  const res = await fetch(`${API}/api/stats`, {headers:headers(),credentials:'include'});
+  const data = await res.json();
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="num">${data.totalFiles}</div><div class="label">总文件数</div></div>
+    <div class="stat-card"><div class="num">${data.totalSizeHuman}</div><div class="label">总大小</div></div>
+    <div class="stat-card"><div class="num">${data.categories?.image||0}</div><div class="label">图片</div></div>
+    <div class="stat-card"><div class="num">${data.categories?.video||0}</div><div class="label">视频</div></div>
+  `;
+}
+
+// --- File List ---
+async function loadFiles(page=1) {
+  currentPage = page;
+  const q = document.getElementById('searchInput').value;
+  const cat = document.getElementById('categoryFilter').value;
+  let url = `${API}/api/files?page=${page}&limit=30`;
+  if (q) url += `&q=${encodeURIComponent(q)}`;
+  if (cat) url += `&category=${cat}`;
+  const res = await fetch(url, {headers:headers(),credentials:'include'});
+  const data = await res.json();
+  const grid = document.getElementById('fileGrid');
+  
+  if (!data.files.length) {
+    grid.innerHTML = '<div class="empty">暂无文件</div>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  grid.innerHTML = data.files.map(f => `
+    <div class="card">
+      <div class="card-img">
+        ${f.category === 'image' ? `<img src="${f.thumbUrl || f.url}" loading="lazy" onerror="this.parentElement.innerHTML='🖼️'">` :
+          f.category === 'video' ? '<div class="icon">🎬</div>' :
+          f.category === 'document' ? '<div class="icon">📄</div>' : '<div class="icon">📦</div>'}
+      </div>
+      <div class="card-body">
+        <div class="name" title="${f.originalName}">${f.originalName}</div>
+        <div class="meta">${formatSize(f.size)} · ${new Date(f.uploadedAt).toLocaleDateString()}</div>
+        <div class="card-actions">
+          <button class="btn btn-primary btn-sm" onclick="copyUrl('${f.url}')">复制链接</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteFile('${f.id}')">删除</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  // Pagination
+  const pag = document.getElementById('pagination');
+  if (data.pages > 1) {
+    let html = '';
+    for (let i = 1; i <= data.pages; i++) {
+      html += `<button class="btn ${i===page?'btn-primary':'btn-secondary'} btn-sm" onclick="loadFiles(${i})">${i}</button>`;
+    }
+    pag.innerHTML = html;
+  } else pag.innerHTML = '';
+}
+
+// --- Upload ---
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag');
+  uploadFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+
+async function uploadFiles(files) {
+  if (!files.length) return;
+  const form = new FormData();
+  for (const f of files) form.append('files', f);
+
+  const prog = document.getElementById('uploadProgress');
+  const fill = document.getElementById('progressFill');
+  prog.style.display = 'block';
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `${API}/api/upload`);
+  xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) fill.style.width = `${(e.loaded/e.total*100)}%`;
+  };
+  xhr.onload = () => {
+    prog.style.display = 'none';
+    fill.style.width = '0';
+    if (xhr.status === 200) {
+      const data = JSON.parse(xhr.responseText);
+      toast(`上传成功：${data.files.length} 个文件`);
+      loadStats();
+      loadFiles(currentPage);
+    } else toast('上传失败', true);
+  };
+  xhr.onerror = () => { prog.style.display='none'; toast('上传失败',true); };
+  xhr.send(form);
+}
+
+// --- Actions ---
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(() => toast('链接已复制'));
+}
+
+async function deleteFile(id) {
+  if (!confirm('确定删除？')) return;
+  await fetch(`${API}/api/files/${id}`, {method:'DELETE',headers:headers(),credentials:'include'});
+  toast('已删除');
+  loadStats();
+  loadFiles(currentPage);
+}
+
+function showApiKeys() {
+  const modal = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <h3>API Keys</h3>
+    <p style="font-size:13px;color:#888;margin-bottom:1rem">用于外部项目对接，请求时带上 <code>X-Api-Key</code> header</p>
+    <div id="keyList" style="margin-bottom:1rem">加载中...</div>
+    <button class="btn btn-primary" onclick="genKey()">生成新 Key</button>
+    <button class="btn btn-secondary" onclick="closeModal()" style="margin-left:.5rem">关闭</button>
+  `;
+  modal.style.display = 'flex';
+  loadKeys();
+}
+
+async function loadKeys() {
+  const res = await fetch(`${API}/api/keys`, {headers:headers(),credentials:'include'});
+  const data = await res.json();
+  document.getElementById('keyList').innerHTML = data.keys.length
+    ? data.keys.map(k => `<div style="padding:.25rem 0;font-size:13px;color:#aaa">${k}</div>`).join('')
+    : '<div style="color:#666;font-size:13px">暂无 API Key</div>';
+}
+
+async function genKey() {
+  const res = await fetch(`${API}/api/keys`, {method:'POST',headers:headers(),credentials:'include'});
+  const data = await res.json();
+  toast('新 Key 已生成，请复制保存');
+  prompt('新 API Key（仅显示一次）：', data.key);
+  loadKeys();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// --- Utils ---
+function formatSize(b) {
+  if (b===0) return '0 B';
+  const k=1024,s=['B','KB','MB','GB'];
+  const i=Math.floor(Math.log(b)/Math.log(k));
+  return parseFloat((b/Math.pow(k,i)).toFixed(1))+' '+s[i];
+}
+
+function toast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.borderColor = err ? '#ef4444' : '#3b82f6';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// --- Search/Filter ---
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadFiles(1), 300);
+});
+document.getElementById('categoryFilter').addEventListener('change', () => loadFiles(1));
+
+// --- Login on Enter ---
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// --- Init ---
+if (token) showApp();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "novel-object-storage",
+  "version": "1.0.0",
+  "description": "Lightweight self-hosted object storage with REST API and Web UI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "mime-types": "^3.0.1",
+    "multer": "^1.4.5-lts.2",
+    "sharp": "^0.34.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xuyuanzhang1122/Novel-Object-Storage.git"
+  }
+}
