@@ -131,7 +131,7 @@ curl -s -X PATCH http://127.0.0.1:4000/api/files/<id> \
 
 完整接口说明见：
 
-- [docs/API.md](/Users/xumengyang/Documents/duixiang/Novel-Object-Storage/docs/API.md)
+- [docs/API.md](docs/API.md)
 
 ## 安全说明
 
