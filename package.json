@@ -1,6 +1,6 @@
 {
   "name": "novel-object-storage",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Lightweight self-hosted object storage with REST API and Web UI",
   "main": "server.js",
   "scripts": {

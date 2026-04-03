@@ -3,355 +3,1399 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Image Store</title>
+<title>Novel Object Storage</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f0f0f;color:#e0e0e0;min-height:100vh}
-.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
-.login-box{background:#1a1a1a;padding:2rem;border-radius:12px;width:320px}
-.login-box h2{margin-bottom:1.5rem;text-align:center;color:#fff}
-.login-box input{width:100%;padding:.75rem;margin-bottom:1rem;background:#2a2a2a;border:1px solid #333;border-radius:8px;color:#fff;font-size:14px}
-.login-box button{width:100%;padding:.75rem;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:14px;cursor:pointer}
-.login-box button:hover{background:#2563eb}
-.login-box .err{color:#ef4444;font-size:13px;margin-bottom:.5rem;display:none}
-.app{display:none;max-width:1200px;margin:0 auto;padding:1rem}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:.5rem}
-.header h1{font-size:1.5rem;color:#fff}
-.header-actions{display:flex;gap:.5rem;align-items:center}
-.btn{padding:.5rem 1rem;border:none;border-radius:8px;cursor:pointer;font-size:13px;color:#fff}
-.btn-primary{background:#3b82f6}.btn-primary:hover{background:#2563eb}
-.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}
-.btn-secondary{background:#374151}.btn-secondary:hover{background:#4b5563}
-.btn-sm{padding:.35rem .75rem;font-size:12px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem}
-.stat-card{background:#1a1a1a;padding:1rem;border-radius:10px;text-align:center}
-.stat-card .num{font-size:1.5rem;font-weight:700;color:#3b82f6}
-.stat-card .label{font-size:12px;color:#888;margin-top:.25rem}
-.toolbar{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
-.toolbar input,.toolbar select{padding:.5rem .75rem;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;font-size:13px}
-.toolbar input{flex:1;min-width:200px}
-.upload-zone{border:2px dashed #333;border-radius:12px;padding:2rem;text-align:center;margin-bottom:1.5rem;cursor:pointer;transition:border-color .2s}
-.upload-zone:hover,.upload-zone.drag{border-color:#3b82f6;background:#1a1a2a}
-.upload-zone input{display:none}
-.upload-zone p{color:#888;font-size:14px}
-.upload-progress{margin-bottom:1rem;display:none}
-.progress-bar{height:6px;background:#2a2a2a;border-radius:3px;overflow:hidden}
-.progress-fill{height:100%;background:#3b82f6;transition:width .3s;width:0}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem}
-.card{background:#1a1a1a;border-radius:10px;overflow:hidden;position:relative;transition:transform .2s}
-.card:hover{transform:translateY(-2px)}
-.card-img{width:100%;height:160px;object-fit:cover;background:#2a2a2a;display:flex;align-items:center;justify-content:center}
-.card-img img{width:100%;height:100%;object-fit:cover}
-.card-img .icon{font-size:3rem}
-.card-body{padding:.75rem}
-.card-body .name{font-size:13px;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card-body .meta{font-size:11px;color:#666;margin-top:.25rem}
-.card-actions{display:flex;gap:.25rem;margin-top:.5rem}
-.card-actions button{flex:1}
-.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100}
-.modal{background:#1a1a1a;border-radius:12px;padding:1.5rem;max-width:500px;width:90%;max-height:90vh;overflow-y:auto}
-.modal h3{margin-bottom:1rem;color:#fff}
-.modal input,.modal textarea{width:100%;padding:.5rem;margin-bottom:.75rem;background:#2a2a2a;border:1px solid #333;border-radius:6px;color:#fff;font-size:13px}
-.modal textarea{min-height:80px;resize:vertical}
-.modal .url-box{background:#0a0a0a;padding:.5rem;border-radius:6px;font-size:12px;color:#3b82f6;word-break:break-all;cursor:pointer;margin-bottom:.75rem}
-.toast{position:fixed;bottom:1rem;right:1rem;background:#1a1a1a;color:#fff;padding:.75rem 1.25rem;border-radius:8px;font-size:13px;z-index:200;display:none;border:1px solid #333}
-.empty{text-align:center;padding:3rem;color:#666}
-.pagination{display:flex;justify-content:center;gap:.5rem;margin-top:1.5rem}
-@media(max-width:600px){.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.card-img{height:120px}}
+:root{
+  --bg:#07111a;
+  --bg-soft:#0d1824;
+  --panel:#0f1d2c;
+  --panel-2:#132438;
+  --line:rgba(185,214,255,.16);
+  --line-strong:rgba(185,214,255,.28);
+  --text:#edf6ff;
+  --muted:#8ea5bb;
+  --accent:#73f0b8;
+  --accent-2:#3cb8ff;
+  --danger:#ff7f7f;
+  --warning:#ffd66b;
+  --shadow:0 18px 48px rgba(2,8,17,.34);
+  --radius:20px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:"IBM Plex Sans","Avenir Next","Segoe UI",sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(60,184,255,.15), transparent 28%),
+    radial-gradient(circle at top right, rgba(115,240,184,.13), transparent 25%),
+    linear-gradient(180deg, #08121c 0%, var(--bg) 45%, #061018 100%);
+}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.shell{
+  width:min(1440px,calc(100vw - 32px));
+  margin:0 auto;
+  padding:24px 0 40px;
+}
+.login-screen{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:24px;
+}
+.login-card{
+  width:min(1080px,100%);
+  display:grid;
+  grid-template-columns:1.25fr .9fr;
+  gap:24px;
+}
+.poster,.login-panel,.topbar,.metric,.section,.aside-panel,.toast,.modal-card{
+  border:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(19,36,56,.94), rgba(10,19,31,.94));
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(16px);
+}
+.poster{
+  border-radius:28px;
+  padding:40px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  min-height:620px;
+  overflow:hidden;
+  position:relative;
+}
+.poster::before,.poster::after{
+  content:"";
+  position:absolute;
+  border-radius:999px;
+  filter:blur(12px);
+}
+.poster::before{
+  width:260px;height:260px;right:-70px;top:-40px;
+  background:radial-gradient(circle, rgba(60,184,255,.4), rgba(60,184,255,0));
+}
+.poster::after{
+  width:320px;height:320px;left:-100px;bottom:-120px;
+  background:radial-gradient(circle, rgba(115,240,184,.25), rgba(115,240,184,0));
+}
+.eyebrow,.section-kicker,.inline-label{
+  font-family:"IBM Plex Mono","SFMono-Regular",monospace;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--accent);
+  font-size:12px;
+}
+.poster h1{
+  font-size:clamp(42px,7vw,82px);
+  line-height:.95;
+  margin:18px 0 14px;
+  max-width:7ch;
+}
+.poster p{
+  margin:0;
+  color:var(--muted);
+  max-width:42ch;
+  line-height:1.65;
+  font-size:16px;
+}
+.poster-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-top:32px;
+}
+.mini-panel{
+  padding:16px 18px;
+  border:1px solid var(--line);
+  background:rgba(6,13,20,.38);
+  border-radius:18px;
+}
+.mini-panel strong{
+  display:block;
+  margin-top:8px;
+  font-size:18px;
+}
+.login-panel{
+  border-radius:28px;
+  padding:28px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.login-panel h2{
+  margin:0 0 10px;
+  font-size:28px;
+}
+.login-panel p{
+  margin:0 0 24px;
+  color:var(--muted);
+  line-height:1.6;
+}
+.stack{display:grid;gap:14px}
+.field{display:grid;gap:8px}
+.field label{
+  font-size:13px;
+  color:var(--muted);
+}
+.input,.textarea,.select{
+  width:100%;
+  border-radius:16px;
+  border:1px solid var(--line);
+  background:rgba(5,12,20,.74);
+  color:var(--text);
+  padding:14px 16px;
+  transition:border-color .18s ease, transform .18s ease, background .18s ease;
+}
+.input:focus,.textarea:focus,.select:focus{
+  outline:none;
+  border-color:var(--accent-2);
+  transform:translateY(-1px);
+  background:rgba(7,15,24,.96);
+}
+.textarea{min-height:104px;resize:vertical}
+.btn{
+  border:none;
+  border-radius:999px;
+  padding:12px 18px;
+  color:#041017;
+  background:linear-gradient(135deg, var(--accent), #9af8d0);
+  transition:transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+  box-shadow:0 10px 24px rgba(115,240,184,.16);
+}
+.btn:hover{transform:translateY(-1px)}
+.btn.secondary{
+  color:var(--text);
+  background:rgba(10,18,28,.78);
+  border:1px solid var(--line);
+  box-shadow:none;
+}
+.btn.ghost{
+  color:var(--muted);
+  background:transparent;
+  border:1px solid transparent;
+  box-shadow:none;
+}
+.btn.danger{
+  color:#fff;
+  background:rgba(255,127,127,.14);
+  border:1px solid rgba(255,127,127,.3);
+  box-shadow:none;
+}
+.btn.small{padding:9px 14px;font-size:13px}
+.login-error,.helper{
+  color:var(--danger);
+  font-size:13px;
+  min-height:18px;
+}
+.helper{color:var(--muted)}
+.app{display:none}
+.topbar{
+  border-radius:28px;
+  padding:22px 24px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:16px;
+  align-items:center;
+  margin-bottom:18px;
+}
+.brand{
+  display:grid;
+  gap:8px;
+}
+.brand h1{
+  margin:0;
+  font-size:34px;
+  letter-spacing:-.03em;
+}
+.brand p{
+  margin:0;
+  color:var(--muted);
+  line-height:1.6;
+}
+.top-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+  margin-bottom:18px;
+}
+.metric{
+  border-radius:22px;
+  padding:20px;
+}
+.metric .value{
+  font-size:32px;
+  font-weight:700;
+  margin-top:10px;
+}
+.layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.75fr) minmax(320px,.95fr);
+  gap:18px;
+}
+.main-column,.aside-column{
+  display:grid;
+  gap:18px;
+}
+.section,.aside-panel{
+  border-radius:24px;
+  padding:22px;
+}
+.section-head,.panel-head{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+  margin-bottom:18px;
+}
+.section-head h2,.panel-head h3{
+  margin:4px 0 0;
+  font-size:23px;
+}
+.section-head p,.panel-head p{
+  margin:8px 0 0;
+  color:var(--muted);
+  line-height:1.6;
+}
+.upload-shell{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(260px,.85fr);
+  gap:16px;
+}
+.dropzone{
+  border:1px dashed var(--line-strong);
+  border-radius:24px;
+  min-height:240px;
+  padding:22px;
+  display:grid;
+  align-content:space-between;
+  background:
+    linear-gradient(180deg, rgba(9,18,29,.82), rgba(8,14,24,.48)),
+    radial-gradient(circle at top right, rgba(60,184,255,.12), transparent 38%);
+  transition:border-color .18s ease, transform .18s ease, background .18s ease;
+}
+.dropzone.drag{
+  border-color:var(--accent);
+  transform:translateY(-2px);
+}
+.dropzone h3{
+  margin:0;
+  font-size:28px;
+}
+.dropzone p{
+  margin:12px 0 0;
+  color:var(--muted);
+  max-width:36ch;
+  line-height:1.65;
+}
+.dropzone input{display:none}
+.dropzone-footer{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.progress{
+  display:none;
+  gap:10px;
+  align-items:center;
+}
+.progress-track{
+  width:180px;
+  height:8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  overflow:hidden;
+}
+.progress-fill{
+  width:0;
+  height:100%;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));
+}
+.toolbar{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) repeat(2,minmax(120px,160px)) auto;
+  gap:12px;
+  margin-bottom:16px;
+}
+.table-wrap{
+  border:1px solid var(--line);
+  border-radius:18px;
+  overflow:hidden;
+  background:rgba(4,9,15,.34);
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+thead{
+  background:rgba(255,255,255,.03);
+}
+th,td{
+  padding:14px 16px;
+  text-align:left;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  vertical-align:top;
+}
+th{
+  color:var(--muted);
+  font-weight:500;
+  font-size:12px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+tbody tr:hover{
+  background:rgba(255,255,255,.02);
+}
+.file-name{
+  font-weight:600;
+  display:block;
+}
+.file-sub{
+  color:var(--muted);
+  margin-top:6px;
+  font-size:12px;
+}
+.tag-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.tag{
+  padding:4px 8px;
+  border-radius:999px;
+  background:rgba(115,240,184,.12);
+  color:var(--accent);
+  font-size:12px;
+}
+.mono{
+  font-family:"IBM Plex Mono","SFMono-Regular",monospace;
+}
+.row-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.pagination{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:14px;
+  flex-wrap:wrap;
+}
+.snippet{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px;
+  background:rgba(6,12,20,.44);
+  display:grid;
+  gap:12px;
+}
+.snippet pre{
+  margin:0;
+  white-space:pre-wrap;
+  word-break:break-word;
+  color:#d6ebff;
+  font-size:13px;
+  line-height:1.65;
+}
+.meta-list{
+  display:grid;
+  gap:10px;
+}
+.meta-row{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  color:var(--muted);
+  font-size:13px;
+}
+.meta-row strong{color:var(--text);font-weight:600}
+.key-list{
+  display:grid;
+  gap:10px;
+}
+.key-item{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px;
+  background:rgba(5,11,18,.38);
+  display:grid;
+  gap:12px;
+}
+.key-item-head{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+}
+.key-item strong{
+  display:block;
+  margin-bottom:6px;
+}
+.empty-state{
+  padding:44px 18px;
+  text-align:center;
+  color:var(--muted);
+}
+.status-line{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:var(--accent);
+  box-shadow:0 0 0 6px rgba(115,240,184,.08);
+}
+.toast{
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  border-radius:18px;
+  padding:14px 18px;
+  display:none;
+  min-width:220px;
+  z-index:120;
+}
+.toast.error{border-color:rgba(255,127,127,.34)}
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,10,.68);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  z-index:110;
+}
+.modal-card{
+  width:min(720px,100%);
+  max-height:92vh;
+  overflow:auto;
+  border-radius:28px;
+  padding:24px;
+}
+.modal-actions{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  margin-top:18px;
+}
+.reveal{
+  animation:rise .45s ease both;
+}
+@keyframes rise{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@media (max-width:1120px){
+  .login-card,.layout,.upload-shell{grid-template-columns:1fr}
+  .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:720px){
+  .shell{width:min(100vw - 20px,1440px)}
+  .topbar{padding:18px}
+  .section,.aside-panel,.metric,.login-panel,.poster,.modal-card{padding:18px}
+  .brand h1,.poster h1{max-width:none}
+  .metrics{grid-template-columns:1fr}
+  .toolbar{grid-template-columns:1fr}
+  th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){display:none}
+}
 </style>
 </head>
 <body>
+<div class="login-screen" id="loginScreen">
+  <div class="login-card reveal">
+    <section class="poster">
+      <div>
+        <div class="eyebrow">Self-hosted object storage for operators and agents</div>
+        <h1>Novel Object Storage</h1>
+        <p>面向脚本、CLI 和 AI 自动化的轻量对象存储。上传、检索、元数据维护、公开链接和 API key 管理都在同一个工作台里完成。</p>
+        <div class="poster-grid">
+          <div class="mini-panel">
+            <span class="inline-label">Mode</span>
+            <strong>CLI-first API</strong>
+            <span class="helper">curl / Bearer / X-Api-Key</span>
+          </div>
+          <div class="mini-panel">
+            <span class="inline-label">Storage</span>
+            <strong>Disk + JSON</strong>
+            <span class="helper">无外部数据库依赖</span>
+          </div>
+        </div>
+      </div>
+      <div class="snippet">
+        <span class="section-kicker">Quickstart</span>
+        <pre class="mono">cp .env.example .env
+npm install
+npm start
 
-<div class="login-wrap" id="loginWrap">
-  <div class="login-box">
-    <h2>🗄️ Image Store</h2>
-    <div class="err" id="loginErr"></div>
-    <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
-    <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
-    <button onclick="doLogin()">登录</button>
+curl -X POST /api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"***"}'</pre>
+      </div>
+    </section>
+
+    <section class="login-panel">
+      <div class="section-kicker">Operator Login</div>
+      <h2>进入控制台</h2>
+      <p>浏览器界面主要用于运维和人工排查；自动化集成建议使用 API key。当前 UI 默认依赖安全 cookie，会话 token 不再落到浏览器持久存储。</p>
+      <div class="stack">
+        <div class="field">
+          <label for="loginUser">用户名</label>
+          <input class="input" id="loginUser" type="text" autocomplete="username" placeholder="admin">
+        </div>
+        <div class="field">
+          <label for="loginPass">密码</label>
+          <input class="input" id="loginPass" type="password" autocomplete="current-password" placeholder="输入密码">
+        </div>
+        <button class="btn" id="loginButton" type="button">登录控制台</button>
+        <div class="login-error" id="loginError"></div>
+      </div>
+    </section>
   </div>
 </div>
 
-<div class="app" id="app">
-  <div class="header">
-    <h1>🗄️ Image Store</h1>
-    <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" onclick="showApiKeys()">API Keys</button>
-      <button class="btn btn-secondary btn-sm" onclick="doLogout()">退出</button>
+<div class="shell app" id="appShell">
+  <header class="topbar reveal">
+    <div class="brand">
+      <div class="status-line">
+        <span class="dot"></span>
+        <span class="eyebrow" id="serviceVersion">Version</span>
+      </div>
+      <h1>Novel Object Storage Console</h1>
+      <p id="serviceDescription">面向操作员和自动化的文件入口、元数据维护与 API 协作面板。</p>
     </div>
-  </div>
+    <div class="top-actions">
+      <button class="btn secondary small" id="refreshButton" type="button">刷新</button>
+      <button class="btn secondary small" id="docsButton" type="button">CLI 文档</button>
+      <button class="btn secondary small" id="keyButton" type="button">API Keys</button>
+      <button class="btn danger small" id="logoutButton" type="button">退出</button>
+    </div>
+  </header>
 
-  <div class="stats" id="stats"></div>
+  <section class="metrics reveal" id="metrics"></section>
 
-  <div class="upload-zone" id="uploadZone">
-    <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.txt,.md,.html">
-    <p>📁 点击或拖拽上传文件（支持图片/视频/文档，最大 500MB）</p>
-  </div>
-  <div class="upload-progress" id="uploadProgress">
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-  </div>
+  <div class="layout">
+    <main class="main-column">
+      <section class="section reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Ingest</div>
+            <h2>上传与标注</h2>
+            <p>给文件附带统一标签和描述，便于后续由 CLI 或 AI 代理检索、分类和回填。</p>
+          </div>
+        </div>
+        <div class="upload-shell">
+          <label class="dropzone" id="dropzone">
+            <div>
+              <div class="section-kicker">Drop Files</div>
+              <h3>把素材直接丢进来</h3>
+              <p>支持图片、视频、文档。危险 MIME 会被强制下载，不再以内联同源页面执行。</p>
+            </div>
+            <div class="dropzone-footer">
+              <div class="progress" id="uploadProgress">
+                <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+                <span class="helper" id="progressText">0%</span>
+              </div>
+              <button class="btn secondary small" id="pickFilesButton" type="button">选择文件</button>
+            </div>
+            <input id="fileInput" type="file" multiple accept="image/*,video/*,.pdf,.txt,.md,.html,.json">
+          </label>
 
-  <div class="toolbar">
-    <input type="text" id="searchInput" placeholder="搜索文件名、描述、标签...">
-    <select id="categoryFilter">
-      <option value="">全部类型</option>
-      <option value="image">图片</option>
-      <option value="video">视频</option>
-      <option value="document">文档</option>
-      <option value="other">其他</option>
-    </select>
-  </div>
+          <div class="stack">
+            <div class="field">
+              <label for="tagsInput">默认标签</label>
+              <input class="input" id="tagsInput" type="text" placeholder="agent, dataset, docs">
+            </div>
+            <div class="field">
+              <label for="descriptionInput">默认描述</label>
+              <textarea class="textarea" id="descriptionInput" placeholder="说明这批文件的来源、用途或处理状态"></textarea>
+            </div>
+            <div class="helper">上传时附加的标签和描述会写入每个文件元数据，可在详情里继续修改。</div>
+          </div>
+        </div>
+      </section>
 
-  <div class="grid" id="fileGrid"></div>
-  <div class="pagination" id="pagination"></div>
+      <section class="section reveal">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Explorer</div>
+            <h2>文件工作区</h2>
+            <p>按名称、标签和类型检索；直接复制公开链接、编辑元数据或删除对象。</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <input class="input" id="searchInput" type="text" placeholder="搜索文件名、描述、标签">
+          <select class="select" id="categoryFilter">
+            <option value="">全部类型</option>
+            <option value="image">图片</option>
+            <option value="video">视频</option>
+            <option value="document">文档</option>
+            <option value="other">其他</option>
+          </select>
+          <input class="input" id="tagFilter" type="text" placeholder="按标签过滤">
+          <button class="btn secondary small" id="clearFiltersButton" type="button">清空</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>文件</th>
+                <th>标签</th>
+                <th>类型</th>
+                <th>描述</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="fileTableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </section>
+    </main>
+
+    <aside class="aside-column">
+      <section class="aside-panel reveal">
+        <div class="panel-head">
+          <div>
+            <div class="section-kicker">Service Meta</div>
+            <h3>服务状态</h3>
+          </div>
+        </div>
+        <div class="meta-list" id="metaList"></div>
+      </section>
+
+      <section class="aside-panel reveal">
+        <div class="panel-head">
+          <div>
+            <div class="section-kicker">CLI Quickstart</div>
+            <h3>常用命令</h3>
+            <p>优先服务脚本和代理。命令都可直接复制，OpenAPI 文档可用于生成客户端。</p>
+          </div>
+        </div>
+        <div class="stack" id="snippetList"></div>
+      </section>
+
+      <section class="aside-panel reveal">
+        <div class="panel-head">
+          <div>
+            <div class="section-kicker">API Keys</div>
+            <h3>自动化凭证</h3>
+            <p>为代理或脚本生成独立 key，支持命名、查看最近使用时间和撤销。</p>
+          </div>
+          <button class="btn secondary small" id="asideKeyButton" type="button">管理</button>
+        </div>
+        <div class="key-list" id="keyList"></div>
+      </section>
+    </aside>
+  </div>
 </div>
 
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal" id="modalContent"></div>
+<div class="modal" id="modal">
+  <div class="modal-card" id="modalCard"></div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const API = '';
-let token = localStorage.getItem('token') || '';
-let currentPage = 1;
+const state = {
+  meta: null,
+  stats: null,
+  files: [],
+  keys: [],
+  sessionToken: '',
+  currentPage: 1,
+  pageCount: 1,
+  selectedFile: null
+};
 
-// --- Auth ---
-async function doLogin() {
-  const u = document.getElementById('loginUser').value;
-  const p = document.getElementById('loginPass').value;
-  const res = await fetch(`${API}/api/login`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({username:u, password:p}), credentials:'include'
+const els = {
+  loginScreen: document.getElementById('loginScreen'),
+  appShell: document.getElementById('appShell'),
+  loginUser: document.getElementById('loginUser'),
+  loginPass: document.getElementById('loginPass'),
+  loginButton: document.getElementById('loginButton'),
+  loginError: document.getElementById('loginError'),
+  logoutButton: document.getElementById('logoutButton'),
+  refreshButton: document.getElementById('refreshButton'),
+  docsButton: document.getElementById('docsButton'),
+  keyButton: document.getElementById('keyButton'),
+  asideKeyButton: document.getElementById('asideKeyButton'),
+  metrics: document.getElementById('metrics'),
+  searchInput: document.getElementById('searchInput'),
+  categoryFilter: document.getElementById('categoryFilter'),
+  tagFilter: document.getElementById('tagFilter'),
+  clearFiltersButton: document.getElementById('clearFiltersButton'),
+  fileTableBody: document.getElementById('fileTableBody'),
+  pagination: document.getElementById('pagination'),
+  dropzone: document.getElementById('dropzone'),
+  fileInput: document.getElementById('fileInput'),
+  pickFilesButton: document.getElementById('pickFilesButton'),
+  tagsInput: document.getElementById('tagsInput'),
+  descriptionInput: document.getElementById('descriptionInput'),
+  uploadProgress: document.getElementById('uploadProgress'),
+  progressFill: document.getElementById('progressFill'),
+  progressText: document.getElementById('progressText'),
+  serviceVersion: document.getElementById('serviceVersion'),
+  serviceDescription: document.getElementById('serviceDescription'),
+  metaList: document.getElementById('metaList'),
+  snippetList: document.getElementById('snippetList'),
+  keyList: document.getElementById('keyList'),
+  modal: document.getElementById('modal'),
+  modalCard: document.getElementById('modalCard'),
+  toast: document.getElementById('toast')
+};
+
+function create(tag, options = {}) {
+  const element = document.createElement(tag);
+  if (options.className) element.className = options.className;
+  if (options.text !== undefined) element.textContent = options.text;
+  if (options.html !== undefined) element.innerHTML = options.html;
+  if (options.attrs) {
+    Object.entries(options.attrs).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) element.setAttribute(key, value);
+    });
+  }
+  return element;
+}
+
+function clear(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function formatDate(value) {
+  if (!value) return '未使用';
+  return new Date(value).toLocaleString('zh-CN');
+}
+
+function fileTypeLabel(category) {
+  return {
+    image: '图片',
+    video: '视频',
+    document: '文档',
+    other: '其他'
+  }[category] || category;
+}
+
+function showToast(message, isError = false) {
+  els.toast.textContent = message;
+  els.toast.className = `toast ${isError ? 'error' : ''}`;
+  els.toast.style.display = 'block';
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    els.toast.style.display = 'none';
+  }, 3200);
+}
+
+function setAuthHeader(headers = {}) {
+  if (state.sessionToken) headers.Authorization = `Bearer ${state.sessionToken}`;
+  return headers;
+}
+
+async function api(path, options = {}) {
+  const config = { credentials: 'include', ...options };
+  config.headers = setAuthHeader(options.headers ? { ...options.headers } : {});
+
+  if (config.body && !(config.body instanceof FormData) && !config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
+  }
+
+  const response = await fetch(path, config);
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json') ? await response.json() : await response.text();
+
+  if (response.status === 401) {
+    state.sessionToken = '';
+    showLogin();
+  }
+
+  if (!response.ok) {
+    throw new Error((data && data.error) || `Request failed: ${response.status}`);
+  }
+
+  return data;
+}
+
+function showLogin() {
+  els.appShell.style.display = 'none';
+  els.loginScreen.style.display = 'grid';
+}
+
+function showApp() {
+  els.loginScreen.style.display = 'none';
+  els.appShell.style.display = 'block';
+}
+
+function renderMetrics() {
+  clear(els.metrics);
+  const categories = state.stats?.categories || {};
+  const items = [
+    { label: '总文件数', value: `${state.stats?.totalFiles || 0}` },
+    { label: '存储占用', value: state.stats?.totalSizeHuman || '0 B' },
+    { label: '图片 / 视频', value: `${categories.image || 0} / ${categories.video || 0}` },
+    { label: '文档 / 其他', value: `${categories.document || 0} / ${categories.other || 0}` }
+  ];
+
+  items.forEach(item => {
+    const card = create('article', { className: 'metric' });
+    card.append(create('div', { className: 'section-kicker', text: item.label }));
+    card.append(create('div', { className: 'value', text: item.value }));
+    els.metrics.append(card);
   });
-  const data = await res.json();
-  if (data.ok) {
-    token = data.token;
-    localStorage.setItem('token', token);
-    showApp();
-  } else {
-    const err = document.getElementById('loginErr');
-    err.textContent = '用户名或密码错误';
-    err.style.display = 'block';
-  }
 }
 
-function doLogout() {
-  fetch(`${API}/api/logout`, {method:'POST',credentials:'include'});
-  token = '';
-  localStorage.removeItem('token');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('loginWrap').style.display = 'flex';
+function renderMeta() {
+  clear(els.metaList);
+  const rows = [
+    ['Version', state.meta?.version || 'unknown'],
+    ['Base URL', state.meta?.baseUrl || location.origin],
+    ['Max File Size', formatBytes(state.meta?.maxFileSize || 0)],
+    ['OpenAPI', '/api/openapi.json'],
+    ['Health', '/api/health']
+  ];
+
+  rows.forEach(([label, value]) => {
+    const row = create('div', { className: 'meta-row' });
+    row.append(create('span', { text: label }));
+    row.append(create('strong', { className: 'mono', text: value }));
+    els.metaList.append(row);
+  });
 }
 
-function headers() {
-  return {'Authorization': `Bearer ${token}`};
-}
-
-async function checkAuth() {
-  try {
-    const res = await fetch(`${API}/api/stats`, {headers: headers(), credentials:'include'});
-    return res.ok;
-  } catch { return false; }
-}
-
-// --- App Init ---
-async function showApp() {
-  if (!await checkAuth()) {
-    token = '';
-    localStorage.removeItem('token');
-    document.getElementById('loginWrap').style.display = 'flex';
-    return;
-  }
-  document.getElementById('loginWrap').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  loadStats();
-  loadFiles();
-}
-
-// --- Stats ---
-async function loadStats() {
-  const res = await fetch(`${API}/api/stats`, {headers:headers(),credentials:'include'});
-  const data = await res.json();
-  document.getElementById('stats').innerHTML = `
-    <div class="stat-card"><div class="num">${data.totalFiles}</div><div class="label">总文件数</div></div>
-    <div class="stat-card"><div class="num">${data.totalSizeHuman}</div><div class="label">总大小</div></div>
-    <div class="stat-card"><div class="num">${data.categories?.image||0}</div><div class="label">图片</div></div>
-    <div class="stat-card"><div class="num">${data.categories?.video||0}</div><div class="label">视频</div></div>
-  `;
-}
-
-// --- File List ---
-async function loadFiles(page=1) {
-  currentPage = page;
-  const q = document.getElementById('searchInput').value;
-  const cat = document.getElementById('categoryFilter').value;
-  let url = `${API}/api/files?page=${page}&limit=30`;
-  if (q) url += `&q=${encodeURIComponent(q)}`;
-  if (cat) url += `&category=${cat}`;
-  const res = await fetch(url, {headers:headers(),credentials:'include'});
-  const data = await res.json();
-  const grid = document.getElementById('fileGrid');
-  
-  if (!data.files.length) {
-    grid.innerHTML = '<div class="empty">暂无文件</div>';
-    document.getElementById('pagination').innerHTML = '';
-    return;
-  }
-
-  grid.innerHTML = data.files.map(f => `
-    <div class="card">
-      <div class="card-img">
-        ${f.category === 'image' ? `<img src="${f.thumbUrl || f.url}" loading="lazy" onerror="this.parentElement.innerHTML='🖼️'">` :
-          f.category === 'video' ? '<div class="icon">🎬</div>' :
-          f.category === 'document' ? '<div class="icon">📄</div>' : '<div class="icon">📦</div>'}
-      </div>
-      <div class="card-body">
-        <div class="name" title="${f.originalName}">${f.originalName}</div>
-        <div class="meta">${formatSize(f.size)} · ${new Date(f.uploadedAt).toLocaleDateString()}</div>
-        <div class="card-actions">
-          <button class="btn btn-primary btn-sm" onclick="copyUrl('${f.url}')">复制链接</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteFile('${f.id}')">删除</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-
-  // Pagination
-  const pag = document.getElementById('pagination');
-  if (data.pages > 1) {
-    let html = '';
-    for (let i = 1; i <= data.pages; i++) {
-      html += `<button class="btn ${i===page?'btn-primary':'btn-secondary'} btn-sm" onclick="loadFiles(${i})">${i}</button>`;
+function buildSnippets() {
+  const baseUrl = state.meta?.baseUrl || location.origin;
+  const items = [
+    {
+      label: 'Login',
+      snippet: `curl -X POST ${baseUrl}/api/login \\\n  -H "Content-Type: application/json" \\\n  -d '{"username":"admin","password":"***"}'`
+    },
+    {
+      label: 'Upload with API key',
+      snippet: `curl -X POST ${baseUrl}/api/upload \\\n  -H "X-Api-Key: isk_xxx" \\\n  -F "files=@artifact.png" \\\n  -F "tags=agent,release" \\\n  -F "description=build output"`
+    },
+    {
+      label: 'List files',
+      snippet: `curl "${baseUrl}/api/files?limit=20&category=image&q=agent" \\\n  -H "X-Api-Key: isk_xxx"`
+    },
+    {
+      label: 'OpenAPI',
+      snippet: `curl ${baseUrl}/api/openapi.json`
     }
-    pag.innerHTML = html;
-  } else pag.innerHTML = '';
+  ];
+
+  clear(els.snippetList);
+  items.forEach(item => {
+    const card = create('div', { className: 'snippet' });
+    card.append(create('span', { className: 'section-kicker', text: item.label }));
+    card.append(create('pre', { className: 'mono', text: item.snippet }));
+    const copyButton = create('button', { className: 'btn secondary small', text: '复制命令' });
+    copyButton.addEventListener('click', () => copyText(item.snippet, '命令已复制'));
+    card.append(copyButton);
+    els.snippetList.append(card);
+  });
 }
 
-// --- Upload ---
-const uploadZone = document.getElementById('uploadZone');
-const fileInput = document.getElementById('fileInput');
+function renderKeys() {
+  clear(els.keyList);
+  if (!state.keys.length) {
+    els.keyList.append(create('div', { className: 'empty-state', text: '暂无 API key。为每个自动化代理单独创建一个。' }));
+    return;
+  }
 
-uploadZone.addEventListener('click', () => fileInput.click());
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('drag');
-  uploadFiles(e.dataTransfer.files);
-});
-fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+  state.keys.forEach(key => {
+    const item = create('article', { className: 'key-item' });
+    const head = create('div', { className: 'key-item-head' });
+    const textBlock = create('div');
+    textBlock.append(create('strong', { text: key.name || 'Automation key' }));
+    textBlock.append(create('div', { className: 'mono helper', text: `${key.maskedKey} (${key.id})` }));
+    head.append(textBlock);
 
-async function uploadFiles(files) {
-  if (!files.length) return;
-  const form = new FormData();
-  for (const f of files) form.append('files', f);
+    const revoke = create('button', { className: 'btn danger small', text: '撤销' });
+    revoke.addEventListener('click', () => revokeKey(key.id));
+    head.append(revoke);
 
-  const prog = document.getElementById('uploadProgress');
-  const fill = document.getElementById('progressFill');
-  prog.style.display = 'block';
-
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', `${API}/api/upload`);
-  xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-  xhr.upload.onprogress = e => {
-    if (e.lengthComputable) fill.style.width = `${(e.loaded/e.total*100)}%`;
-  };
-  xhr.onload = () => {
-    prog.style.display = 'none';
-    fill.style.width = '0';
-    if (xhr.status === 200) {
-      const data = JSON.parse(xhr.responseText);
-      toast(`上传成功：${data.files.length} 个文件`);
-      loadStats();
-      loadFiles(currentPage);
-    } else toast('上传失败', true);
-  };
-  xhr.onerror = () => { prog.style.display='none'; toast('上传失败',true); };
-  xhr.send(form);
+    item.append(head);
+    item.append(create('div', { className: 'helper', text: `创建于 ${formatDate(key.createdAt)} · 最近使用 ${formatDate(key.lastUsedAt)}` }));
+    els.keyList.append(item);
+  });
 }
 
-// --- Actions ---
-function copyUrl(url) {
-  navigator.clipboard.writeText(url).then(() => toast('链接已复制'));
+function renderFiles() {
+  clear(els.fileTableBody);
+  if (!state.files.length) {
+    const row = create('tr');
+    const cell = create('td', { className: 'empty-state', text: '当前没有匹配文件。可以调整筛选条件或上传新对象。' });
+    cell.colSpan = 5;
+    row.append(cell);
+    els.fileTableBody.append(row);
+    renderPagination();
+    return;
+  }
+
+  state.files.forEach(file => {
+    const row = create('tr');
+
+    const nameCell = create('td');
+    const name = create('span', { className: 'file-name', text: file.originalName });
+    name.title = file.originalName;
+    const sub = create('div', {
+      className: 'file-sub mono',
+      text: `${file.id} · ${formatBytes(file.size)} · ${new Date(file.uploadedAt).toLocaleDateString('zh-CN')}`
+    });
+    nameCell.append(name, sub);
+
+    const tagCell = create('td');
+    const tagList = create('div', { className: 'tag-list' });
+    if (Array.isArray(file.tags) && file.tags.length) {
+      file.tags.forEach(tag => tagList.append(create('span', { className: 'tag mono', text: tag })));
+    } else {
+      tagList.append(create('span', { className: 'helper', text: '无标签' }));
+    }
+    tagCell.append(tagList);
+
+    const typeCell = create('td');
+    typeCell.append(
+      create('div', { text: fileTypeLabel(file.category) }),
+      create('div', { className: 'file-sub mono', text: file.mimeType })
+    );
+
+    const descCell = create('td', { text: file.description || '无描述' });
+
+    const actionCell = create('td');
+    const actionWrap = create('div', { className: 'row-actions' });
+
+    const copyButton = create('button', { className: 'btn secondary small', text: '复制链接' });
+    copyButton.addEventListener('click', () => copyText(file.url, '公开链接已复制'));
+
+    const editButton = create('button', { className: 'btn secondary small', text: '详情' });
+    editButton.addEventListener('click', () => openFileModal(file));
+
+    const deleteButton = create('button', { className: 'btn danger small', text: '删除' });
+    deleteButton.addEventListener('click', () => deleteFile(file.id));
+
+    actionWrap.append(copyButton, editButton, deleteButton);
+    actionCell.append(actionWrap);
+
+    row.append(nameCell, tagCell, typeCell, descCell, actionCell);
+    els.fileTableBody.append(row);
+  });
+
+  renderPagination();
 }
 
-async function deleteFile(id) {
-  if (!confirm('确定删除？')) return;
-  await fetch(`${API}/api/files/${id}`, {method:'DELETE',headers:headers(),credentials:'include'});
-  toast('已删除');
-  loadStats();
-  loadFiles(currentPage);
+function renderPagination() {
+  clear(els.pagination);
+  if (state.pageCount <= 1) return;
+
+  for (let page = 1; page <= state.pageCount; page += 1) {
+    const button = create('button', {
+      className: `btn ${page === state.currentPage ? '' : 'secondary'} small`,
+      text: `${page}`
+    });
+    button.addEventListener('click', () => loadFiles(page));
+    els.pagination.append(button);
+  }
 }
 
-function showApiKeys() {
-  const modal = document.getElementById('modalOverlay');
-  const content = document.getElementById('modalContent');
-  content.innerHTML = `
-    <h3>API Keys</h3>
-    <p style="font-size:13px;color:#888;margin-bottom:1rem">用于外部项目对接，请求时带上 <code>X-Api-Key</code> header</p>
-    <div id="keyList" style="margin-bottom:1rem">加载中...</div>
-    <button class="btn btn-primary" onclick="genKey()">生成新 Key</button>
-    <button class="btn btn-secondary" onclick="closeModal()" style="margin-left:.5rem">关闭</button>
-  `;
-  modal.style.display = 'flex';
-  loadKeys();
+function copyText(value, message) {
+  navigator.clipboard.writeText(value).then(() => showToast(message));
+}
+
+async function loadMeta() {
+  state.meta = await api('/api/meta');
+  els.serviceVersion.textContent = `Version ${state.meta.version}`;
+  els.serviceDescription.textContent = `API base: ${state.meta.baseUrl} · OpenAPI: /api/openapi.json`;
+  renderMeta();
+  buildSnippets();
+}
+
+async function loadStats() {
+  state.stats = await api('/api/stats');
+  renderMetrics();
 }
 
 async function loadKeys() {
-  const res = await fetch(`${API}/api/keys`, {headers:headers(),credentials:'include'});
-  const data = await res.json();
-  document.getElementById('keyList').innerHTML = data.keys.length
-    ? data.keys.map(k => `<div style="padding:.25rem 0;font-size:13px;color:#aaa">${k}</div>`).join('')
-    : '<div style="color:#666;font-size:13px">暂无 API Key</div>';
+  const data = await api('/api/keys');
+  state.keys = data.keys || [];
+  renderKeys();
 }
 
-async function genKey() {
-  const res = await fetch(`${API}/api/keys`, {method:'POST',headers:headers(),credentials:'include'});
-  const data = await res.json();
-  toast('新 Key 已生成，请复制保存');
-  prompt('新 API Key（仅显示一次）：', data.key);
-  loadKeys();
+async function loadFiles(page = 1) {
+  state.currentPage = page;
+  const query = new URLSearchParams({ page: String(page), limit: '20' });
+  const search = els.searchInput.value.trim();
+  const category = els.categoryFilter.value;
+  const tag = els.tagFilter.value.trim();
+  if (search) query.set('q', search);
+  if (category) query.set('category', category);
+  if (tag) query.set('tag', tag);
+
+  const data = await api(`/api/files?${query.toString()}`);
+  state.files = data.files || [];
+  state.pageCount = data.pages || 1;
+  renderFiles();
+}
+
+function openModal(content) {
+  clear(els.modalCard);
+  els.modalCard.append(content);
+  els.modal.style.display = 'flex';
 }
 
 function closeModal() {
-  document.getElementById('modalOverlay').style.display = 'none';
+  els.modal.style.display = 'none';
+  clear(els.modalCard);
 }
 
-document.getElementById('modalOverlay').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeModal();
+function openDocsModal() {
+  const wrapper = create('div');
+  wrapper.append(
+    create('div', { className: 'section-kicker', text: 'CLI Reference' }),
+    create('h2', { text: '操作命令与文档入口' }),
+    create('p', { className: 'helper', text: '浏览器界面之外，推荐将这些命令交给脚本或 AI 代理执行。完整 schema 位于 /api/openapi.json。' })
+  );
+
+  const snippets = create('div', { className: 'stack' });
+  const baseUrl = state.meta?.baseUrl || location.origin;
+  [
+    `curl ${baseUrl}/api/health`,
+    `curl ${baseUrl}/api/openapi.json`,
+    `curl -X POST ${baseUrl}/api/keys -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"name":"agent-runner"}'`,
+    `curl -X PATCH ${baseUrl}/api/files/<id> -H "X-Api-Key: isk_xxx" -H "Content-Type: application/json" -d '{"tags":["agent","reviewed"],"description":"verified by operator"}'`
+  ].forEach(snippet => {
+    const block = create('div', { className: 'snippet' });
+    block.append(create('pre', { className: 'mono', text: snippet }));
+    const copyButton = create('button', { className: 'btn secondary small', text: '复制命令' });
+    copyButton.addEventListener('click', () => copyText(snippet, '命令已复制'));
+    block.append(copyButton);
+    snippets.append(block);
+  });
+
+  wrapper.append(snippets);
+  const actions = create('div', { className: 'modal-actions' });
+  const openApi = create('button', { className: 'btn secondary small', text: '复制 OpenAPI 地址' });
+  openApi.addEventListener('click', () => copyText(`${baseUrl}/api/openapi.json`, 'OpenAPI 地址已复制'));
+  const closeButton = create('button', { className: 'btn small', text: '关闭' });
+  closeButton.addEventListener('click', closeModal);
+  actions.append(openApi, closeButton);
+  wrapper.append(actions);
+  openModal(wrapper);
+}
+
+function openKeyModal(createdKey = null) {
+  const wrapper = create('div');
+  wrapper.append(
+    create('div', { className: 'section-kicker', text: 'API Keys' }),
+    create('h2', { text: '管理自动化凭证' }),
+    create('p', { className: 'helper', text: 'key 只在创建时返回完整明文；之后仅保留 id 和脱敏显示，用 id 撤销。' })
+  );
+
+  if (createdKey) {
+    const created = create('div', { className: 'snippet' });
+    created.append(create('span', { className: 'section-kicker', text: 'New Key' }));
+    created.append(create('pre', { className: 'mono', text: createdKey }));
+    const copyButton = create('button', { className: 'btn secondary small', text: '复制新 key' });
+    copyButton.addEventListener('click', () => copyText(createdKey, '新 key 已复制'));
+    created.append(copyButton);
+    wrapper.append(created);
+  }
+
+  const nameField = create('div', { className: 'field' });
+  const nameInput = create('input', { className: 'input', attrs: { placeholder: '例如 agent-runner' } });
+  nameField.append(create('label', { text: 'Key 名称' }), nameInput);
+  wrapper.append(nameField);
+
+  const createButton = create('button', { className: 'btn small', text: '生成新 key' });
+  createButton.addEventListener('click', async () => {
+    try {
+      const data = await api('/api/keys', {
+        method: 'POST',
+        body: JSON.stringify({ name: nameInput.value.trim() })
+      });
+      await loadKeys();
+      openKeyModal(data.key);
+      showToast('新 API key 已生成');
+    } catch (error) {
+      showToast(error.message, true);
+    }
+  });
+  wrapper.append(createButton);
+
+  const list = create('div', { className: 'stack' });
+  state.keys.forEach(key => {
+    const row = create('div', { className: 'key-item' });
+    row.append(create('strong', { text: key.name || 'Automation key' }));
+    row.append(create('div', { className: 'mono helper', text: `${key.maskedKey} · ${key.id}` }));
+    row.append(create('div', { className: 'helper', text: `创建于 ${formatDate(key.createdAt)} · 最近使用 ${formatDate(key.lastUsedAt)}` }));
+    const revoke = create('button', { className: 'btn danger small', text: '撤销 key' });
+    revoke.addEventListener('click', () => revokeKey(key.id, true));
+    row.append(revoke);
+    list.append(row);
+  });
+
+  if (!state.keys.length) list.append(create('div', { className: 'empty-state', text: '暂无 API key。' }));
+  wrapper.append(list);
+
+  const actions = create('div', { className: 'modal-actions' });
+  const closeButton = create('button', { className: 'btn secondary small', text: '关闭' });
+  closeButton.addEventListener('click', closeModal);
+  actions.append(closeButton);
+  wrapper.append(actions);
+  openModal(wrapper);
+}
+
+function openFileModal(file) {
+  state.selectedFile = file;
+  const wrapper = create('div');
+  wrapper.append(
+    create('div', { className: 'section-kicker', text: 'File Detail' }),
+    create('h2', { text: file.originalName }),
+    create('p', { className: 'helper mono', text: `${file.id} · ${file.mimeType}` })
+  );
+
+  const metaSnippet = create('div', { className: 'snippet' });
+  metaSnippet.append(create('pre', {
+    className: 'mono',
+    text: JSON.stringify({
+      url: file.url,
+      thumbUrl: file.thumbUrl,
+      uploadedAt: file.uploadedAt,
+      category: file.category,
+      size: file.size
+    }, null, 2)
+  }));
+  const copyButton = create('button', { className: 'btn secondary small', text: '复制公开链接' });
+  copyButton.addEventListener('click', () => copyText(file.url, '公开链接已复制'));
+  metaSnippet.append(copyButton);
+  wrapper.append(metaSnippet);
+
+  const tagsField = create('div', { className: 'field' });
+  const tagsInput = create('input', {
+    className: 'input',
+    attrs: { value: Array.isArray(file.tags) ? file.tags.join(', ') : '' }
+  });
+  tagsField.append(create('label', { text: '标签' }), tagsInput);
+
+  const descriptionField = create('div', { className: 'field' });
+  const descriptionInput = create('textarea', { className: 'textarea', text: file.description || '' });
+  descriptionField.append(create('label', { text: '描述' }), descriptionInput);
+
+  wrapper.append(tagsField, descriptionField);
+
+  const actions = create('div', { className: 'modal-actions' });
+  const saveButton = create('button', { className: 'btn small', text: '保存元数据' });
+  saveButton.addEventListener('click', async () => {
+    try {
+      await api(`/api/files/${file.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          tags: tagsInput.value,
+          description: descriptionInput.value
+        })
+      });
+      closeModal();
+      await refreshAll(false);
+      showToast('文件元数据已更新');
+    } catch (error) {
+      showToast(error.message, true);
+    }
+  });
+
+  const closeButton = create('button', { className: 'btn secondary small', text: '关闭' });
+  closeButton.addEventListener('click', closeModal);
+  actions.append(closeButton, saveButton);
+  wrapper.append(actions);
+  openModal(wrapper);
+}
+
+async function revokeKey(id, keepModalOpen = false) {
+  if (!confirm('确定撤销这个 API key？')) return;
+  try {
+    await api(`/api/keys/${id}`, { method: 'DELETE' });
+    await loadKeys();
+    if (keepModalOpen) openKeyModal();
+    showToast('API key 已撤销');
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+async function deleteFile(id) {
+  if (!confirm('确定删除这个文件？此操作不可恢复。')) return;
+  try {
+    await api(`/api/files/${id}`, { method: 'DELETE' });
+    await refreshAll(false);
+    showToast('文件已删除');
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+async function uploadFiles(files) {
+  if (!files || !files.length) return;
+
+  const form = new FormData();
+  Array.from(files).forEach(file => form.append('files', file));
+  if (els.tagsInput.value.trim()) form.append('tags', els.tagsInput.value.trim());
+  if (els.descriptionInput.value.trim()) form.append('description', els.descriptionInput.value.trim());
+
+  els.uploadProgress.style.display = 'flex';
+  els.progressFill.style.width = '0%';
+  els.progressText.textContent = '0%';
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/upload');
+  xhr.withCredentials = true;
+  if (state.sessionToken) xhr.setRequestHeader('Authorization', `Bearer ${state.sessionToken}`);
+
+  xhr.upload.onprogress = event => {
+    if (!event.lengthComputable) return;
+    const percent = Math.round((event.loaded / event.total) * 100);
+    els.progressFill.style.width = `${percent}%`;
+    els.progressText.textContent = `${percent}%`;
+  };
+
+  xhr.onload = async () => {
+    els.uploadProgress.style.display = 'none';
+    if (xhr.status >= 200 && xhr.status < 300) {
+      els.fileInput.value = '';
+      showToast(`上传完成，共 ${JSON.parse(xhr.responseText).files.length} 个文件`);
+      await refreshAll(false);
+      return;
+    }
+
+    try {
+      const response = JSON.parse(xhr.responseText);
+      showToast(response.error || '上传失败', true);
+    } catch {
+      showToast('上传失败', true);
+    }
+  };
+
+  xhr.onerror = () => {
+    els.uploadProgress.style.display = 'none';
+    showToast('上传失败', true);
+  };
+
+  xhr.send(form);
+}
+
+async function refreshAll(includeKeys = true) {
+  await loadStats();
+  await loadFiles(state.currentPage);
+  if (includeKeys) await loadKeys();
+}
+
+async function doLogin() {
+  els.loginError.textContent = '';
+  try {
+    const data = await api('/api/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: els.loginUser.value.trim(),
+        password: els.loginPass.value
+      })
+    });
+    state.sessionToken = data.token || '';
+    showApp();
+    await loadMeta();
+    await refreshAll();
+    showToast('已登录');
+  } catch (error) {
+    els.loginError.textContent = error.message || '登录失败';
+  }
+}
+
+async function doLogout() {
+  try {
+    await api('/api/logout', { method: 'POST' });
+  } catch {}
+  state.sessionToken = '';
+  showLogin();
+}
+
+let filterTimer = null;
+function scheduleFileReload() {
+  clearTimeout(filterTimer);
+  filterTimer = setTimeout(() => {
+    loadFiles(1).catch(error => showToast(error.message, true));
+  }, 220);
+}
+
+async function boot() {
+  try {
+    await loadMeta();
+    await loadStats();
+    await loadFiles();
+    await loadKeys();
+    showApp();
+  } catch {
+    showLogin();
+  }
+}
+
+els.loginButton.addEventListener('click', () => doLogin());
+els.loginPass.addEventListener('keydown', event => {
+  if (event.key === 'Enter') doLogin();
+});
+els.logoutButton.addEventListener('click', () => doLogout());
+els.refreshButton.addEventListener('click', () => refreshAll().then(() => showToast('数据已刷新')).catch(error => showToast(error.message, true)));
+els.docsButton.addEventListener('click', () => openDocsModal());
+els.keyButton.addEventListener('click', () => openKeyModal());
+els.asideKeyButton.addEventListener('click', () => openKeyModal());
+els.searchInput.addEventListener('input', scheduleFileReload);
+els.categoryFilter.addEventListener('change', scheduleFileReload);
+els.tagFilter.addEventListener('input', scheduleFileReload);
+els.clearFiltersButton.addEventListener('click', () => {
+  els.searchInput.value = '';
+  els.categoryFilter.value = '';
+  els.tagFilter.value = '';
+  loadFiles(1).catch(error => showToast(error.message, true));
+});
+els.pickFilesButton.addEventListener('click', event => {
+  event.preventDefault();
+  els.fileInput.click();
+});
+els.fileInput.addEventListener('change', () => uploadFiles(els.fileInput.files));
+els.dropzone.addEventListener('dragover', event => {
+  event.preventDefault();
+  els.dropzone.classList.add('drag');
+});
+els.dropzone.addEventListener('dragleave', () => els.dropzone.classList.remove('drag'));
+els.dropzone.addEventListener('drop', event => {
+  event.preventDefault();
+  els.dropzone.classList.remove('drag');
+  uploadFiles(event.dataTransfer.files);
+});
+els.modal.addEventListener('click', event => {
+  if (event.target === els.modal) closeModal();
 });
 
-// --- Utils ---
-function formatSize(b) {
-  if (b===0) return '0 B';
-  const k=1024,s=['B','KB','MB','GB'];
-  const i=Math.floor(Math.log(b)/Math.log(k));
-  return parseFloat((b/Math.pow(k,i)).toFixed(1))+' '+s[i];
-}
-
-function toast(msg, err=false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.display = 'block';
-  t.style.borderColor = err ? '#ef4444' : '#3b82f6';
-  setTimeout(() => t.style.display = 'none', 3000);
-}
-
-// --- Search/Filter ---
-let searchTimer;
-document.getElementById('searchInput').addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => loadFiles(1), 300);
-});
-document.getElementById('categoryFilter').addEventListener('change', () => loadFiles(1));
-
-// --- Login on Enter ---
-document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-
-// --- Init ---
-if (token) showApp();
+boot();
 </script>
 </body>
 </html>
