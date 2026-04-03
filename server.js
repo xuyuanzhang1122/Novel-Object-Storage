@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { execFile } = require('child_process');
 const sharp = require('sharp');
 const mime = require('mime-types');
 const bcrypt = require('bcrypt');
@@ -22,11 +23,15 @@ const APP_VERSION = process.env.APP_VERSION || pkg.version || '0.1.0';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'files');
 const THUMB_DIR = path.join(DATA_DIR, 'thumbs');
+const DERIVED_DIR = path.join(DATA_DIR, 'derived');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 const AUTH_FILE = path.join(DATA_DIR, 'auth.json');
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 500 * 1024 * 1024; // 500MB
 const TOKEN_EXPIRY = parseInt(process.env.TOKEN_EXPIRY) || 7 * 24 * 60 * 60 * 1000; // 7 days
+const VIDEO_TRANSCODE_ENABLED = process.env.VIDEO_TRANSCODE_ENABLED !== 'false';
+const FFMPEG_PATH = process.env.FFMPEG_PATH || 'ffmpeg';
+const VIDEO_STREAM_MIME_TYPES = new Set(['video/mp4', 'video/webm']);
 const COOKIE_SECURE = process.env.COOKIE_SECURE
   ? process.env.COOKIE_SECURE === 'true'
   : !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(BASE_URL) && BASE_URL.startsWith('https://');
@@ -46,11 +51,20 @@ const INLINE_SAFE_MIME_TYPES = new Set([
 ]);
 
 // Ensure dirs
-[DATA_DIR, UPLOAD_DIR, THUMB_DIR].forEach(d => fs.mkdirSync(d, { recursive: true }));
+[DATA_DIR, UPLOAD_DIR, THUMB_DIR, DERIVED_DIR].forEach(d => fs.mkdirSync(d, { recursive: true }));
 
 // --- DB ---
 function loadDB() {
-  try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8')); }
+  try {
+    const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    const files = db.files || {};
+    Object.values(files).forEach(file => {
+      if (file.category === 'video' && !file.playbackUrl) file.playbackUrl = file.url;
+      addPreviewMetadata(file);
+    });
+    db.files = files;
+    return db;
+  }
   catch { return { files: {}, stats: { totalFiles: 0, totalSize: 0 } }; }
 }
 function saveDB(db) { fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2)); }
@@ -203,6 +217,107 @@ function makeDownloadHeader(filename) {
   return `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`;
 }
 
+function execFileAsync(command, args) {
+  return new Promise((resolve, reject) => {
+    execFile(command, args, (error, stdout, stderr) => {
+      if (error) {
+        error.stdout = stdout;
+        error.stderr = stderr;
+        reject(error);
+        return;
+      }
+      resolve({ stdout, stderr });
+    });
+  });
+}
+
+async function hasFfmpeg() {
+  if (hasFfmpeg.cache !== undefined) return hasFfmpeg.cache;
+  try {
+    await execFileAsync(FFMPEG_PATH, ['-version']);
+    hasFfmpeg.cache = true;
+  } catch {
+    hasFfmpeg.cache = false;
+  }
+  return hasFfmpeg.cache;
+}
+
+function shouldTranscodeVideo(file) {
+  if (!VIDEO_TRANSCODE_ENABLED) return false;
+  const ext = path.extname(file.originalname).toLowerCase();
+  return !VIDEO_STREAM_MIME_TYPES.has(file.mimeType) || !['.mp4', '.webm'].includes(ext);
+}
+
+async function generateVideoPoster(filePath, outputPath) {
+  try {
+    await execFileAsync(FFMPEG_PATH, [
+      '-y',
+      '-i', filePath,
+      '-ss', '00:00:01.000',
+      '-frames:v', '1',
+      '-vf', 'scale=400:-1',
+      outputPath
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function transcodeVideoToMp4(sourcePath, outputPath) {
+  await execFileAsync(FFMPEG_PATH, [
+    '-y',
+    '-i', sourcePath,
+    '-movflags', '+faststart',
+    '-pix_fmt', 'yuv420p',
+    '-c:v', 'libx264',
+    '-preset', 'veryfast',
+    '-crf', '23',
+    '-c:a', 'aac',
+    '-b:a', '128k',
+    outputPath
+  ]);
+}
+
+function addPreviewMetadata(entry) {
+  entry.previewUrl = entry.thumbUrl || entry.playbackUrl || entry.url;
+  return entry;
+}
+
+function sendFileWithRangeSupport(req, res, filePath, mimeType, extraHeaders = {}) {
+  const stat = fs.statSync(filePath);
+  const range = req.headers.range;
+
+  res.setHeader('Content-Type', mimeType);
+  res.setHeader('Accept-Ranges', 'bytes');
+  Object.entries(extraHeaders).forEach(([key, value]) => res.setHeader(key, value));
+
+  if (!range) {
+    res.setHeader('Content-Length', stat.size);
+    fs.createReadStream(filePath).pipe(res);
+    return;
+  }
+
+  const match = /bytes=(\d*)-(\d*)/.exec(range);
+  if (!match) {
+    res.status(416).end();
+    return;
+  }
+
+  const start = match[1] ? parseInt(match[1], 10) : 0;
+  const end = match[2] ? parseInt(match[2], 10) : stat.size - 1;
+  if (start >= stat.size || end >= stat.size || start > end) {
+    res.status(416).setHeader('Content-Range', `bytes */${stat.size}`);
+    res.end();
+    return;
+  }
+
+  res.status(206);
+  res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+  res.setHeader('Content-Length', end - start + 1);
+  fs.createReadStream(filePath, { start, end }).pipe(res);
+}
+
 function authMiddleware(req, res, next) {
   // Check API key header
   const apiKey = req.headers['x-api-key'];
@@ -292,7 +407,7 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, version: APP_VERSION, time: new Date().toISOString() });
 });
 
-app.get('/api/meta', (req, res) => {
+app.get('/api/meta', async (req, res) => {
   res.json({
     name: pkg.name,
     version: APP_VERSION,
@@ -300,6 +415,10 @@ app.get('/api/meta', (req, res) => {
     docsUrl: `${BASE_URL}/api/openapi.json`,
     uiUrl: `${BASE_URL}/`,
     maxFileSize: MAX_FILE_SIZE,
+    features: {
+      videoTranscode: VIDEO_TRANSCODE_ENABLED,
+      ffmpegAvailable: await hasFfmpeg()
+    },
     auth: ['cookie', 'bearer', 'x-api-key']
   });
 });
@@ -351,13 +470,25 @@ app.get('/f/:filename', (req, res) => {
   const filePath = path.join(UPLOAD_DIR, filename);
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
   const mimeType = mime.lookup(filePath) || 'application/octet-stream';
-  res.setHeader('Content-Type', mimeType);
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  const headers = {
+    'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'public, max-age=31536000, immutable'
+  };
   if (!isSafeInlineMimeType(mimeType) || ACTIVE_CONTENT_TYPES.has(mimeType)) {
-    res.setHeader('Content-Disposition', makeDownloadHeader(filename));
+    headers['Content-Disposition'] = makeDownloadHeader(filename);
   }
-  fs.createReadStream(filePath).pipe(res);
+  sendFileWithRangeSupport(req, res, filePath, mimeType, headers);
+});
+
+app.get('/derived/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename);
+  const filePath = path.join(DERIVED_DIR, filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
+  const mimeType = mime.lookup(filePath) || 'application/octet-stream';
+  sendFileWithRangeSupport(req, res, filePath, mimeType, {
+    'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'public, max-age=31536000, immutable'
+  });
 });
 
 // Serve thumbnails publicly
@@ -365,10 +496,10 @@ app.get('/thumb/:filename', (req, res) => {
   const filename = path.basename(req.params.filename);
   const thumbPath = path.join(THUMB_DIR, filename);
   if (!fs.existsSync(thumbPath)) return res.status(404).json({ error: 'Not found' });
-  res.setHeader('Content-Type', 'image/jpeg');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-  fs.createReadStream(thumbPath).pipe(res);
+  sendFileWithRangeSupport(req, res, thumbPath, 'image/jpeg', {
+    'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'public, max-age=31536000, immutable'
+  });
 });
 
 // ==================== AUTH ROUTES ====================
@@ -447,12 +578,13 @@ app.post('/api/upload', authMiddleware, upload.array('files', 50), async (req, r
     ? req.body.tags.split(',').map(t => t.trim()).filter(Boolean)
     : [];
   const description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
+  const ffmpegReady = await hasFfmpeg();
   const results = await mutateDB(async db => {
     const entries = [];
 
     for (const file of req.files) {
       const id = path.basename(file.filename, path.extname(file.filename));
-      const mimeType = mime.lookup(file.originalname) || 'application/octet-stream';
+      const mimeType = mime.lookup(file.originalname) || mime.lookup(file.filename) || 'application/octet-stream';
       const category = getCategory(mimeType);
 
       const entry = {
@@ -464,6 +596,9 @@ app.post('/api/upload', authMiddleware, upload.array('files', 50), async (req, r
         size: file.size,
         url: `${BASE_URL}/f/${file.filename}`,
         thumbUrl: null,
+        playbackUrl: null,
+        derivedFilename: null,
+        transcoded: false,
         uploadedAt: new Date().toISOString(),
         tags,
         description
@@ -475,6 +610,31 @@ app.post('/api/upload', authMiddleware, upload.array('files', 50), async (req, r
         if (hasThumb) entry.thumbUrl = `${BASE_URL}/thumb/${thumbName}`;
       }
 
+      if (category === 'video') {
+        const posterName = `${id}.jpg`;
+        if (ffmpegReady) {
+          const hasPoster = await generateVideoPoster(file.path, path.join(THUMB_DIR, posterName));
+          if (hasPoster) entry.thumbUrl = `${BASE_URL}/thumb/${posterName}`;
+        }
+
+        entry.playbackUrl = entry.url;
+        if (ffmpegReady && shouldTranscodeVideo({ ...file, mimeType })) {
+          const derivedFilename = `${id}.mp4`;
+          const derivedPath = path.join(DERIVED_DIR, derivedFilename);
+          try {
+            await transcodeVideoToMp4(file.path, derivedPath);
+            const derivedStat = fs.statSync(derivedPath);
+            entry.playbackUrl = `${BASE_URL}/derived/${derivedFilename}`;
+            entry.derivedFilename = derivedFilename;
+            entry.transcoded = true;
+            entry.playbackMimeType = 'video/mp4';
+            entry.playbackSize = derivedStat.size;
+            db.stats.totalSize += derivedStat.size;
+          } catch {}
+        }
+      }
+
+      addPreviewMetadata(entry);
       db.files[id] = entry;
       db.stats.totalFiles++;
       db.stats.totalSize += file.size;
@@ -527,6 +687,7 @@ app.patch('/api/files/:id', authMiddleware, (req, res) => {
     if (Array.isArray(tags)) record.tags = tags.map(tag => String(tag).trim()).filter(Boolean);
     if (typeof tags === 'string') record.tags = tags.split(',').map(tag => tag.trim()).filter(Boolean);
     if (description !== undefined) record.description = String(description).trim();
+    addPreviewMetadata(record);
     return record;
   });
   return file.then(updated => {
@@ -540,13 +701,16 @@ app.delete('/api/files/:id', authMiddleware, async (req, res) => {
     const record = db.files[req.params.id];
     if (!record) return null;
     db.stats.totalFiles = Math.max(0, db.stats.totalFiles - 1);
-    db.stats.totalSize = Math.max(0, db.stats.totalSize - record.size);
+    db.stats.totalSize = Math.max(0, db.stats.totalSize - record.size - (record.playbackSize || 0));
     delete db.files[record.id];
     return record;
   });
   if (!file) return res.status(404).json({ error: 'Not found' });
   try { fs.unlinkSync(path.join(UPLOAD_DIR, file.filename)); } catch {}
   try { fs.unlinkSync(path.join(THUMB_DIR, `${file.id}.jpg`)); } catch {}
+  if (file.derivedFilename) {
+    try { fs.unlinkSync(path.join(DERIVED_DIR, file.derivedFilename)); } catch {}
+  }
   res.json({ ok: true });
 });
 

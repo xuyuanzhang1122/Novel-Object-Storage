@@ -20,6 +20,8 @@
 
 - 多文件上传，最大 500MB，可附带标签和描述
 - 图片自动生成缩略图
+- 图片、视频、PDF、文本在控制台内支持预览
+- 视频上传后可按需转码为更适合远程流播放的 MP4（依赖 `ffmpeg`）
 - 公开文件 URL 与缩略图 URL
 - 密码登录、Bearer token、Cookie、API key 多种认证方式
 - API key 命名、查看最近使用时间、按 id 撤销
@@ -59,6 +61,8 @@ npm start
 | `MAX_FILE_SIZE` | `524288000` | 单文件最大大小，单位字节 |
 | `TOKEN_EXPIRY` | `604800000` | 登录 session 过期时间，单位毫秒 |
 | `COOKIE_SECURE` | 自动判断 | 强制指定 cookie 是否使用 `Secure` |
+| `VIDEO_TRANSCODE_ENABLED` | `true` | 是否尝试转码不适合远程流播放的视频 |
+| `FFMPEG_PATH` | `ffmpeg` | `ffmpeg` 可执行文件路径 |
 | `APP_VERSION` | `package.json` | 覆盖对外暴露的版本号 |
 
 说明：
@@ -66,6 +70,7 @@ npm start
 - `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 只在第一次创建 `data/auth.json` 时使用
 - 如需重置管理员账号，删除 `data/auth.json` 后重启
 - `COOKIE_SECURE` 未设置时，会根据 `BASE_URL` 自动判断；本地 `http://127.0.0.1:4000` 会自动关闭 secure cookie
+- 视频转码和视频封面依赖 `ffmpeg`；如果系统里没有 `ffmpeg`，服务会自动降级为仅保存原视频
 
 ## 数据布局
 
@@ -140,6 +145,7 @@ curl -s -X PATCH http://127.0.0.1:4000/api/files/<id> \
 - 响应附带 `X-Content-Type-Options: nosniff`
 - 管理端不再把 session token 落到浏览器持久存储
 - API key 不再以明文持久保存，磁盘上只保留哈希和元数据
+- 视频文件支持 Range 请求；转码后的 MP4 会优先作为浏览器预览与远程播放地址
 
 ## 反向代理示例
 

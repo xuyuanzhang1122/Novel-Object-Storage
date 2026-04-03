@@ -112,6 +112,9 @@
       "size": 123456,
       "url": "http://127.0.0.1:4000/f/m5abc-1a2b3c4d.jpg",
       "thumbUrl": "http://127.0.0.1:4000/thumb/m5abc-1a2b3c4d.jpg",
+      "previewUrl": "http://127.0.0.1:4000/thumb/m5abc-1a2b3c4d.jpg",
+      "playbackUrl": null,
+      "transcoded": false,
       "uploadedAt": "2026-04-03T12:00:00.000Z",
       "tags": ["agent", "release"],
       "description": "nightly build artifact"
@@ -256,3 +259,5 @@
 - 文件响应包含 `X-Content-Type-Options: nosniff`
 - 危险 MIME 类型会附带 `Content-Disposition: attachment`
 - 图片和视频保留内联预览能力
+- 视频与派生视频文件支持 `Range` 请求，便于远程流播放
+- 若服务端存在 `ffmpeg` 且 `VIDEO_TRANSCODE_ENABLED` 未关闭，非 `mp4/webm` 视频会尝试转码为 MP4，并在元数据里返回 `playbackUrl`

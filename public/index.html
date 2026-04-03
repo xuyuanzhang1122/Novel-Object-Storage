@@ -408,6 +408,39 @@ tbody tr:hover{
   font-size:13px;
   line-height:1.65;
 }
+.preview-shell{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+  background:rgba(6,12,20,.44);
+  margin-bottom:16px;
+}
+.preview-frame{
+  width:100%;
+  min-height:220px;
+  border:none;
+  border-radius:14px;
+  background:#02070d;
+}
+.preview-image,.preview-video{
+  width:100%;
+  max-height:420px;
+  border-radius:14px;
+  background:#02070d;
+  object-fit:contain;
+}
+.preview-text{
+  margin:0;
+  max-height:360px;
+  overflow:auto;
+  padding:14px;
+  border-radius:14px;
+  background:#07111a;
+  color:#d6ebff;
+  line-height:1.65;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
 .meta-list{
   display:grid;
   gap:10px;
@@ -522,24 +555,24 @@ tbody tr:hover{
   <div class="login-card reveal">
     <section class="poster">
       <div>
-        <div class="eyebrow">Self-hosted object storage for operators and agents</div>
+        <div class="eyebrow">面向运维与代理的自托管对象存储</div>
         <h1>Novel Object Storage</h1>
         <p>面向脚本、CLI 和 AI 自动化的轻量对象存储。上传、检索、元数据维护、公开链接和 API key 管理都在同一个工作台里完成。</p>
         <div class="poster-grid">
           <div class="mini-panel">
-            <span class="inline-label">Mode</span>
-            <strong>CLI-first API</strong>
+            <span class="inline-label">模式</span>
+            <strong>CLI 优先 API</strong>
             <span class="helper">curl / Bearer / X-Api-Key</span>
           </div>
           <div class="mini-panel">
-            <span class="inline-label">Storage</span>
-            <strong>Disk + JSON</strong>
+            <span class="inline-label">存储</span>
+            <strong>磁盘 + JSON</strong>
             <span class="helper">无外部数据库依赖</span>
           </div>
         </div>
       </div>
       <div class="snippet">
-        <span class="section-kicker">Quickstart</span>
+        <span class="section-kicker">快速开始</span>
         <pre class="mono">cp .env.example .env
 npm install
 npm start
@@ -551,7 +584,7 @@ curl -X POST /api/login \
     </section>
 
     <section class="login-panel">
-      <div class="section-kicker">Operator Login</div>
+      <div class="section-kicker">控制台登录</div>
       <h2>进入控制台</h2>
       <p>浏览器界面主要用于运维和人工排查；自动化集成建议使用 API key。当前 UI 默认依赖安全 cookie，会话 token 不再落到浏览器持久存储。</p>
       <div class="stack">
@@ -575,15 +608,15 @@ curl -X POST /api/login \
     <div class="brand">
       <div class="status-line">
         <span class="dot"></span>
-        <span class="eyebrow" id="serviceVersion">Version</span>
+        <span class="eyebrow" id="serviceVersion">版本</span>
       </div>
-      <h1>Novel Object Storage Console</h1>
+      <h1>Novel Object Storage 控制台</h1>
       <p id="serviceDescription">面向操作员和自动化的文件入口、元数据维护与 API 协作面板。</p>
     </div>
     <div class="top-actions">
       <button class="btn secondary small" id="refreshButton" type="button">刷新</button>
-      <button class="btn secondary small" id="docsButton" type="button">CLI 文档</button>
-      <button class="btn secondary small" id="keyButton" type="button">API Keys</button>
+      <button class="btn secondary small" id="docsButton" type="button">接口文档</button>
+      <button class="btn secondary small" id="keyButton" type="button">API 密钥</button>
       <button class="btn danger small" id="logoutButton" type="button">退出</button>
     </div>
   </header>
@@ -595,7 +628,7 @@ curl -X POST /api/login \
       <section class="section reveal">
         <div class="section-head">
           <div>
-            <div class="section-kicker">Ingest</div>
+            <div class="section-kicker">上传入口</div>
             <h2>上传与标注</h2>
             <p>给文件附带统一标签和描述，便于后续由 CLI 或 AI 代理检索、分类和回填。</p>
           </div>
@@ -603,7 +636,7 @@ curl -X POST /api/login \
         <div class="upload-shell">
           <label class="dropzone" id="dropzone">
             <div>
-              <div class="section-kicker">Drop Files</div>
+              <div class="section-kicker">拖拽上传</div>
               <h3>把素材直接丢进来</h3>
               <p>支持图片、视频、文档。危险 MIME 会被强制下载，不再以内联同源页面执行。</p>
             </div>
@@ -634,7 +667,7 @@ curl -X POST /api/login \
       <section class="section reveal">
         <div class="section-head">
           <div>
-            <div class="section-kicker">Explorer</div>
+            <div class="section-kicker">文件浏览</div>
             <h2>文件工作区</h2>
             <p>按名称、标签和类型检索；直接复制公开链接、编辑元数据或删除对象。</p>
           </div>
@@ -675,7 +708,7 @@ curl -X POST /api/login \
       <section class="aside-panel reveal">
         <div class="panel-head">
           <div>
-            <div class="section-kicker">Service Meta</div>
+            <div class="section-kicker">服务信息</div>
             <h3>服务状态</h3>
           </div>
         </div>
@@ -685,7 +718,7 @@ curl -X POST /api/login \
       <section class="aside-panel reveal">
         <div class="panel-head">
           <div>
-            <div class="section-kicker">CLI Quickstart</div>
+            <div class="section-kicker">CLI 快速命令</div>
             <h3>常用命令</h3>
             <p>优先服务脚本和代理。命令都可直接复制，OpenAPI 文档可用于生成客户端。</p>
           </div>
@@ -696,11 +729,11 @@ curl -X POST /api/login \
       <section class="aside-panel reveal">
         <div class="panel-head">
           <div>
-            <div class="section-kicker">API Keys</div>
+            <div class="section-kicker">API 密钥</div>
             <h3>自动化凭证</h3>
             <p>为代理或脚本生成独立 key，支持命名、查看最近使用时间和撤销。</p>
           </div>
-          <button class="btn secondary small" id="asideKeyButton" type="button">管理</button>
+      <button class="btn secondary small" id="asideKeyButton" type="button">管理密钥</button>
         </div>
         <div class="key-list" id="keyList"></div>
       </section>
@@ -871,11 +904,11 @@ function renderMetrics() {
 function renderMeta() {
   clear(els.metaList);
   const rows = [
-    ['Version', state.meta?.version || 'unknown'],
-    ['Base URL', state.meta?.baseUrl || location.origin],
-    ['Max File Size', formatBytes(state.meta?.maxFileSize || 0)],
+    ['版本', state.meta?.version || '未知'],
+    ['接口地址', state.meta?.baseUrl || location.origin],
+    ['单文件上限', formatBytes(state.meta?.maxFileSize || 0)],
     ['OpenAPI', '/api/openapi.json'],
-    ['Health', '/api/health']
+    ['健康检查', '/api/health']
   ];
 
   rows.forEach(([label, value]) => {
@@ -884,21 +917,29 @@ function renderMeta() {
     row.append(create('strong', { className: 'mono', text: value }));
     els.metaList.append(row);
   });
+  if (state.meta?.features) {
+    const featureRow = create('div', { className: 'meta-row' });
+    featureRow.append(create('span', { text: '视频转码' }));
+    featureRow.append(create('strong', {
+      text: state.meta.features.ffmpegAvailable && state.meta.features.videoTranscode ? '已启用' : '未启用'
+    }));
+    els.metaList.append(featureRow);
+  }
 }
 
 function buildSnippets() {
   const baseUrl = state.meta?.baseUrl || location.origin;
   const items = [
     {
-      label: 'Login',
+      label: '登录',
       snippet: `curl -X POST ${baseUrl}/api/login \\\n  -H "Content-Type: application/json" \\\n  -d '{"username":"admin","password":"***"}'`
     },
     {
-      label: 'Upload with API key',
+      label: '使用 API 密钥上传',
       snippet: `curl -X POST ${baseUrl}/api/upload \\\n  -H "X-Api-Key: isk_xxx" \\\n  -F "files=@artifact.png" \\\n  -F "tags=agent,release" \\\n  -F "description=build output"`
     },
     {
-      label: 'List files',
+      label: '列出文件',
       snippet: `curl "${baseUrl}/api/files?limit=20&category=image&q=agent" \\\n  -H "X-Api-Key: isk_xxx"`
     },
     {
@@ -930,7 +971,7 @@ function renderKeys() {
     const item = create('article', { className: 'key-item' });
     const head = create('div', { className: 'key-item-head' });
     const textBlock = create('div');
-    textBlock.append(create('strong', { text: key.name || 'Automation key' }));
+    textBlock.append(create('strong', { text: key.name || '自动化密钥' }));
     textBlock.append(create('div', { className: 'mono helper', text: `${key.maskedKey} (${key.id})` }));
     head.append(textBlock);
 
@@ -1027,8 +1068,9 @@ function copyText(value, message) {
 
 async function loadMeta() {
   state.meta = await api('/api/meta');
-  els.serviceVersion.textContent = `Version ${state.meta.version}`;
-  els.serviceDescription.textContent = `API base: ${state.meta.baseUrl} · OpenAPI: /api/openapi.json`;
+  els.serviceVersion.textContent = `版本 ${state.meta.version}`;
+  const transcodeText = state.meta?.features?.ffmpegAvailable && state.meta?.features?.videoTranscode ? '视频转码已启用' : '视频转码未启用';
+  els.serviceDescription.textContent = `接口地址：${state.meta.baseUrl} · OpenAPI：/api/openapi.json · ${transcodeText}`;
   renderMeta();
   buildSnippets();
 }
@@ -1071,10 +1113,65 @@ function closeModal() {
   clear(els.modalCard);
 }
 
+async function buildPreviewContent(file) {
+  const wrapper = create('div', { className: 'preview-shell' });
+  wrapper.append(create('div', { className: 'section-kicker', text: '文件预览' }));
+
+  if (file.category === 'image') {
+    const image = create('img', {
+      className: 'preview-image',
+      attrs: { src: file.url, alt: file.originalName, loading: 'lazy' }
+    });
+    wrapper.append(image);
+    return wrapper;
+  }
+
+  if (file.category === 'video') {
+    const video = create('video', {
+      className: 'preview-video',
+      attrs: {
+        src: file.playbackUrl || file.url,
+        controls: 'controls',
+        preload: 'metadata',
+        playsinline: 'playsinline',
+        poster: file.thumbUrl || ''
+      }
+    });
+    wrapper.append(video);
+    if (file.transcoded) {
+      wrapper.append(create('div', { className: 'helper', text: '该视频已转码为更适合远程播放的 MP4 版本。' }));
+    }
+    return wrapper;
+  }
+
+  if (file.mimeType === 'application/pdf') {
+    const frame = create('iframe', {
+      className: 'preview-frame',
+      attrs: { src: file.url, title: file.originalName }
+    });
+    wrapper.append(frame);
+    return wrapper;
+  }
+
+  if (file.mimeType.startsWith('text/') || ['application/json'].includes(file.mimeType)) {
+    try {
+      const text = await fetch(file.url).then(response => response.text());
+      wrapper.append(create('pre', { className: 'preview-text mono', text: text.slice(0, 12000) }));
+      return wrapper;
+    } catch {
+      wrapper.append(create('div', { className: 'helper', text: '文本预览加载失败，请直接下载查看。' }));
+      return wrapper;
+    }
+  }
+
+  wrapper.append(create('div', { className: 'helper', text: '当前类型暂不支持内联预览，请使用公开链接或下载查看。' }));
+  return wrapper;
+}
+
 function openDocsModal() {
   const wrapper = create('div');
   wrapper.append(
-    create('div', { className: 'section-kicker', text: 'CLI Reference' }),
+    create('div', { className: 'section-kicker', text: 'CLI 文档' }),
     create('h2', { text: '操作命令与文档入口' }),
     create('p', { className: 'helper', text: '浏览器界面之外，推荐将这些命令交给脚本或 AI 代理执行。完整 schema 位于 /api/openapi.json。' })
   );
@@ -1109,14 +1206,14 @@ function openDocsModal() {
 function openKeyModal(createdKey = null) {
   const wrapper = create('div');
   wrapper.append(
-    create('div', { className: 'section-kicker', text: 'API Keys' }),
+    create('div', { className: 'section-kicker', text: 'API 密钥' }),
     create('h2', { text: '管理自动化凭证' }),
-    create('p', { className: 'helper', text: 'key 只在创建时返回完整明文；之后仅保留 id 和脱敏显示，用 id 撤销。' })
+    create('p', { className: 'helper', text: '密钥只在创建时返回完整明文；之后仅保留 id 和脱敏显示，用 id 撤销。' })
   );
 
   if (createdKey) {
     const created = create('div', { className: 'snippet' });
-    created.append(create('span', { className: 'section-kicker', text: 'New Key' }));
+    created.append(create('span', { className: 'section-kicker', text: '新密钥' }));
     created.append(create('pre', { className: 'mono', text: createdKey }));
     const copyButton = create('button', { className: 'btn secondary small', text: '复制新 key' });
     copyButton.addEventListener('click', () => copyText(createdKey, '新 key 已复制'));
@@ -1126,7 +1223,7 @@ function openKeyModal(createdKey = null) {
 
   const nameField = create('div', { className: 'field' });
   const nameInput = create('input', { className: 'input', attrs: { placeholder: '例如 agent-runner' } });
-  nameField.append(create('label', { text: 'Key 名称' }), nameInput);
+  nameField.append(create('label', { text: '密钥名称' }), nameInput);
   wrapper.append(nameField);
 
   const createButton = create('button', { className: 'btn small', text: '生成新 key' });
@@ -1148,7 +1245,7 @@ function openKeyModal(createdKey = null) {
   const list = create('div', { className: 'stack' });
   state.keys.forEach(key => {
     const row = create('div', { className: 'key-item' });
-    row.append(create('strong', { text: key.name || 'Automation key' }));
+    row.append(create('strong', { text: key.name || '自动化密钥' }));
     row.append(create('div', { className: 'mono helper', text: `${key.maskedKey} · ${key.id}` }));
     row.append(create('div', { className: 'helper', text: `创建于 ${formatDate(key.createdAt)} · 最近使用 ${formatDate(key.lastUsedAt)}` }));
     const revoke = create('button', { className: 'btn danger small', text: '撤销 key' });
@@ -1168,21 +1265,26 @@ function openKeyModal(createdKey = null) {
   openModal(wrapper);
 }
 
-function openFileModal(file) {
+async function openFileModal(file) {
   state.selectedFile = file;
   const wrapper = create('div');
   wrapper.append(
-    create('div', { className: 'section-kicker', text: 'File Detail' }),
+    create('div', { className: 'section-kicker', text: '文件详情' }),
     create('h2', { text: file.originalName }),
     create('p', { className: 'helper mono', text: `${file.id} · ${file.mimeType}` })
   );
+
+  wrapper.append(await buildPreviewContent(file));
 
   const metaSnippet = create('div', { className: 'snippet' });
   metaSnippet.append(create('pre', {
     className: 'mono',
     text: JSON.stringify({
       url: file.url,
+      playbackUrl: file.playbackUrl || null,
       thumbUrl: file.thumbUrl,
+      previewUrl: file.previewUrl || null,
+      transcoded: Boolean(file.transcoded),
       uploadedAt: file.uploadedAt,
       category: file.category,
       size: file.size
