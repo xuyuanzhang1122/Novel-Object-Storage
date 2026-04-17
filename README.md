@@ -2,165 +2,185 @@
 
 `v0.2.0`
 
-轻量、自托管、CLI 优先的对象存储服务，适合小型项目、自动化代理和人工运维协作。
+[简体中文](README.zh-CN.md)
 
-文件直接落到磁盘，元数据保存在 JSON 中；没有 S3，没有数据库，没有额外控制面依赖。
+Lightweight, self-hosted, CLI-first object storage service for small projects, automation agents, and human operators.
 
-## 这版做了什么（v0.2.0）
+Files land on disk. Metadata lives in JSON. No S3, no database, no external control-plane dependencies.
 
-- 修复 OpenAPI：`POST /api/upload` 以前被错写成 `POST /api/files`，导致按 spec 生成的客户端上传 404
-- OpenAPI 文档补齐 `components.schemas` / `requestBody` / `responses` / `parameters`，可直接喂给代码生成器或 AI 代理
-- 公开端点（`/api/health`、`/api/meta`、`/api/openapi.json`、`/api/login`、`/f/*`、`/thumb/*`、`/derived/*`）显式标注无需认证
-- 支持直接用公网 IP 或局域网 IP 作为 `BASE_URL`，未显式配置时自动探测本机非 loopback IPv4
-- `/api/files` 的 `page/limit` 参数加上边界校验（`limit` 封顶 200），对缺失 `tags/description` 的遗留记录加保护
-- `/api/upload` 空请求改为返回 400
-- 文件访问走 `Object.prototype.hasOwnProperty` 白名单，阻止 `__proto__` 等特殊 key 意外命中
-- 前端上传响应解析和文件预览加空值守护，异常响应不再崩溃
-- 文档（README / docs/API.md / .env.example）同步反映上述变化
+## Features
 
-## 上一版修了什么（v0.1.0）
+- Multi-file upload, up to 500 MB each, with tags and descriptions
+- Auto-generated thumbnails for images
+- In-console preview for images, videos, PDF, and text
+- On-demand video transcoding to streaming-friendly MP4 (requires `ffmpeg`)
+- Public file URLs and thumbnail URLs
+- Password login, Bearer tokens, Cookies, and API keys
+- API key naming, last-used tracking, and revocation by ID
+- File search, category filtering, tag filtering, and metadata editing
+- Built-in console UI for human inspection and light operations
+- OpenAPI spec for CLI, scripts, and AI agent client generation
 
-- 修复公开文件同源执行风险：危险 MIME 会强制下载，不再以内联页面执行
-- 修复管理后台文件名存储型 XSS
-- 修复浏览器登出不撤销 bearer session 的问题
-- 将 `db.json` 写入改为串行化，避免并发请求互相覆盖
-- API key 改为 `id + maskedKey + hash` 模型，支持可靠撤销
-- 管理前端重做为运维控制台，强调文件工作区、CLI 片段和 key 管理
-- 增加 `GET /api/health`、`GET /api/meta`、`GET /api/openapi.json`
+## One-Line Install
 
-## 特性
+```bash
+curl -fsSL https://raw.githubusercontent.com/xuyuanzhang1122/Novel-Object-Storage/main/install.sh | bash
+```
 
-- 多文件上传，最大 500MB，可附带标签和描述
-- 图片自动生成缩略图
-- 图片、视频、PDF、文本在控制台内支持预览
-- 视频上传后可按需转码为更适合远程流播放的 MP4（依赖 `ffmpeg`）
-- 公开文件 URL 与缩略图 URL
-- 密码登录、Bearer token、Cookie、API key 多种认证方式
-- API key 命名、查看最近使用时间、按 id 撤销
-- 文件搜索、分类筛选、标签筛选、元数据编辑
-- 内置控制台 UI，适合人工排查和轻量运维
-- OpenAPI 文档，方便 CLI、脚本和 AI 代理生成客户端
+The installer will interactively prompt you for:
 
-## 快速启动
+| Prompt | Default | Description |
+|---|---|---|
+| Install directory | `./Novel-Object-Storage` | Where to clone the project |
+| Server port | `4000` | HTTP listening port |
+| Data directory | `./data` | Where files and metadata are stored |
+| Access method | Public IP (auto-detect) | Choose public IP, domain, or local-only |
+| Admin username | `admin` | Admin login name |
+| Admin password | *(required)* | Admin login password |
+
+> **Note:** Requires `git`, `node >= 18`, and `npm`. The installer checks these before proceeding.
+
+## Quick Start (Manual)
 
 ```bash
 git clone https://github.com/xuyuanzhang1122/Novel-Object-Storage.git
 cd Novel-Object-Storage
 cp .env.example .env
+# Edit .env — set ADMIN_USERNAME, ADMIN_PASSWORD, and BASE_URL
 npm install
 npm start
 ```
 
-默认监听：
+Default endpoint:
 
 - `http://127.0.0.1:4000`
 
-首次启动前必须在 `.env` 里设置：
+You **must** set the following in `.env` before the first run:
 
 - `ADMIN_USERNAME`
 - `ADMIN_PASSWORD`
 
-## 环境变量
+## Environment Variables
 
-| 变量 | 默认值 | 说明 |
+| Variable | Default | Description |
 |---|---|---|
-| `PORT` | `4000` | 服务端口 |
-| `HOST` | `127.0.0.1` | 监听地址 |
-| `BASE_URL` | 自动探测 | 用于生成公开 URL 和 OpenAPI server URL。支持域名或公网/局域网 IP（例如 `http://203.0.113.42:4000`）。未设置时自动探测本机非 loopback IPv4 |
-| `ADMIN_USERNAME` | - | 首次启动时创建管理员账号 |
-| `ADMIN_PASSWORD` | - | 首次启动时创建管理员密码 |
-| `DATA_DIR` | `./data` | 数据目录 |
-| `MAX_FILE_SIZE` | `524288000` | 单文件最大大小，单位字节 |
-| `TOKEN_EXPIRY` | `604800000` | 登录 session 过期时间，单位毫秒 |
-| `COOKIE_SECURE` | 自动判断 | 强制指定 cookie 是否使用 `Secure` |
-| `VIDEO_TRANSCODE_ENABLED` | `true` | 是否尝试转码不适合远程流播放的视频 |
-| `FFMPEG_PATH` | `ffmpeg` | `ffmpeg` 可执行文件路径 |
-| `APP_VERSION` | `package.json` | 覆盖对外暴露的版本号 |
+| `PORT` | `4000` | Server port |
+| `HOST` | `127.0.0.1` | Listening address |
+| `BASE_URL` | Auto-detect | Used to generate public URLs and the OpenAPI server URL. Accepts a domain or a public/LAN IP (e.g. `http://203.0.113.42:4000`). Auto-detects a non-loopback IPv4 if unset |
+| `ADMIN_USERNAME` | – | Admin account created on first run |
+| `ADMIN_PASSWORD` | – | Admin password created on first run |
+| `DATA_DIR` | `./data` | Data directory |
+| `MAX_FILE_SIZE` | `524288000` | Max file size in bytes |
+| `TOKEN_EXPIRY` | `604800000` | Login session TTL in milliseconds |
+| `COOKIE_SECURE` | Auto-detect | Force cookie `Secure` flag on or off |
+| `VIDEO_TRANSCODE_ENABLED` | `true` | Whether to transcode videos unsuitable for remote streaming |
+| `FFMPEG_PATH` | `ffmpeg` | Path to `ffmpeg` binary |
+| `APP_VERSION` | `package.json` | Override the externally reported version |
 
-说明：
+Notes:
 
-- `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 只在第一次创建 `data/auth.json` 时使用
-- 如需重置管理员账号，删除 `data/auth.json` 后重启
-- `COOKIE_SECURE` 未设置时，会根据 `BASE_URL` 自动判断；本地 `http://127.0.0.1:4000` 会自动关闭 secure cookie
-- `BASE_URL` 接受域名或原始 IP；公网部署若尚未申请域名，可直接写公网 IP，例如 `http://203.0.113.42:4000`
-- 视频转码和视频封面依赖 `ffmpeg`；如果系统里没有 `ffmpeg`，服务会自动降级为仅保存原视频
+- `ADMIN_USERNAME` and `ADMIN_PASSWORD` are only used the first time `data/auth.json` is created
+- To reset the admin account, delete `data/auth.json` and restart
+- `COOKIE_SECURE` auto-detects from `BASE_URL` when unset; local `http://127.0.0.1:4000` will disable secure cookies automatically
+- `BASE_URL` accepts a domain or raw IP; for public deployments without a domain, simply use the public IP, e.g. `http://203.0.113.42:4000`
+- Video transcoding and cover images require `ffmpeg`; if missing, the service gracefully degrades to saving the original video only
 
-## 数据布局
+## Data Layout
 
-默认目录结构：
+Default directory structure:
 
 ```text
 data/
-  auth.json       # 管理员账号 + API key 哈希
-  db.json         # 文件元数据与统计
-  files/          # 原始文件
-  thumbs/         # 图片缩略图
+  auth.json       # Admin account + API key hashes
+  db.json         # File metadata and statistics
+  files/          # Original files
+  thumbs/         # Image thumbnails
 ```
 
-## 认证方式
+## Authentication
 
-除公开文件下载路由外，所有 `/api/*` 管理接口都支持以下认证方式之一：
+All `/api/*` management endpoints (except public file routes) support one of the following:
 
-- Cookie：浏览器控制台默认使用
-- Bearer token：`Authorization: Bearer <token>`
-- API key：`X-Api-Key: <key>`
+- Cookie — used by the browser console by default
+- Bearer token — `Authorization: Bearer <token>`
+- API key — `X-Api-Key: <key>`
 
-登录接口既会设置 cookie，也会返回 bearer token，便于 CLI 直接继续调用。
+The login endpoint sets a cookie and also returns a bearer token, making it easy to continue from CLI.
 
-## CLI 优先接口
+## CLI-First Interface
 
-服务暴露了三个无需认证的发现接口：
+Three discovery endpoints require no authentication:
 
 - `GET /api/health`
 - `GET /api/meta`
 - `GET /api/openapi.json`
 
-常用操作示例：
+Common operations:
 
 ```bash
-# 1. 登录
+# 1. Login
 TOKEN=$(curl -s http://127.0.0.1:4000/api/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"your-password"}' | jq -r .token)
 
-# 2. 创建 automation key
+# 2. Create an automation key
 curl -s http://127.0.0.1:4000/api/keys \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"agent-runner"}'
 
-# 3. 上传文件
+# 3. Upload a file
 curl -s -X POST http://127.0.0.1:4000/api/upload \
   -H "Authorization: Bearer $TOKEN" \
   -F "files=@artifact.png" \
   -F "tags=release,agent" \
   -F "description=nightly build artifact"
 
-# 4. 列出文件
+# 4. List files
 curl -s "http://127.0.0.1:4000/api/files?limit=20&q=release" \
   -H "Authorization: Bearer $TOKEN"
 
-# 5. 更新元数据
+# 5. Update metadata
 curl -s -X PATCH http://127.0.0.1:4000/api/files/<id> \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"tags":["release","verified"],"description":"reviewed by operator"}'
 ```
 
-完整接口说明见：
+Full API reference:
 
 - [docs/API.md](docs/API.md)
 
-## 安全说明
+## API Quick Reference
 
-- 上传文件会根据 MIME 类型决定是否允许浏览器内联展示
-- `text/html`、`application/xhtml+xml`、`image/svg+xml`、JavaScript 等危险类型会强制 `attachment`
-- 响应附带 `X-Content-Type-Options: nosniff`
-- 管理端不再把 session token 落到浏览器持久存储
-- API key 不再以明文持久保存，磁盘上只保留哈希和元数据
-- 视频文件支持 Range 请求；转码后的 MP4 会优先作为浏览器预览与远程播放地址
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/login` | Login & get token | ❌ |
+| `POST` | `/api/upload` | Upload files | ✅ |
+| `GET` | `/api/files` | List files (pagination / search / filter) | ✅ |
+| `GET` | `/api/files/:id` | File details | ✅ |
+| `PATCH` | `/api/files/:id` | Update tags / description | ✅ |
+| `DELETE` | `/api/files/:id` | Delete file | ✅ |
+| `GET` | `/api/stats` | Statistics | ✅ |
+| `POST` | `/api/keys` | Create API key | ✅ |
+| `GET` | `/api/keys` | List API keys | ✅ |
+| `DELETE` | `/api/keys/:id` | Revoke API key | ✅ |
+| `GET` | `/api/health` | Health check | ❌ |
+| `GET` | `/api/meta` | Service metadata | ❌ |
+| `GET` | `/api/openapi.json` | OpenAPI spec | ❌ |
+| `GET` | `/f/{filename}` | Public file access | ❌ |
+| `GET` | `/thumb/{id}.jpg` | Public thumbnail | ❌ |
 
-## 反向代理示例
+## Security Notes
+
+- Uploaded files use MIME type to decide whether to allow inline display
+- `text/html`, `application/xhtml+xml`, `image/svg+xml`, JavaScript, and other dangerous types force `attachment`
+- Responses include `X-Content-Type-Options: nosniff`
+- The admin console no longer persists session tokens in browser storage
+- API keys are no longer stored in plaintext; only hashes and metadata are saved to disk
+- Video files support Range requests; transcoded MP4s are preferred for browser preview and remote playback
+
+## Reverse Proxy Example
 
 ### Caddy
 
@@ -178,7 +198,7 @@ your-domain.com {
 }
 ```
 
-## systemd 示例
+## systemd Example
 
 ```ini
 [Unit]
@@ -197,17 +217,41 @@ EnvironmentFile=/path/to/Novel-Object-Storage/.env
 WantedBy=multi-user.target
 ```
 
-## 开发提示
+## Development
 
 ```bash
 npm run dev
 ```
 
-调试时建议先检查：
+When debugging, start by checking:
 
 - `GET /api/health`
 - `GET /api/meta`
 - `GET /api/openapi.json`
+
+## Changelog
+
+### What's New in v0.2.0
+
+- Fixed OpenAPI: `POST /api/upload` was incorrectly documented as `POST /api/files`, causing 404s for spec-generated clients
+- OpenAPI spec now includes full `components.schemas` / `requestBody` / `responses` / `parameters`, ready for code generators and AI agents
+- Public endpoints (`/api/health`, `/api/meta`, `/api/openapi.json`, `/api/login`, `/f/*`, `/thumb/*`, `/derived/*`) are explicitly marked as unauthenticated
+- Support using public IP or LAN IP as `BASE_URL`; auto-detects a non-loopback IPv4 when not explicitly configured
+- `/api/files` `page/limit` parameters now have boundary validation (`limit` capped at 200) with guards for legacy records missing `tags/description`
+- `/api/upload` now returns 400 on empty requests
+- File access uses `Object.prototype.hasOwnProperty` allowlist to block `__proto__` and other special-key exploits
+- Frontend upload response parsing and file preview include null guards — abnormal responses no longer crash the UI
+- Documentation (README / docs/API.md / .env.example) updated to reflect all above changes
+
+### What Changed in v0.1.0
+
+- Fixed public file same-origin execution risk: dangerous MIME types now force download instead of inline display
+- Fixed stored XSS via filenames in the admin console
+- Fixed browser logout not revoking bearer sessions
+- Serialized `db.json` writes to prevent concurrent requests from overwriting each other
+- API keys switched to `id + maskedKey + hash` model for reliable revocation
+- Admin frontend rebuilt as operator console with focus on file workspace, CLI snippets, and key management
+- Added `GET /api/health`, `GET /api/meta`, `GET /api/openapi.json`
 
 ## License
 
