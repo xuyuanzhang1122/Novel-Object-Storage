@@ -1,6 +1,6 @@
 # API Reference
 
-`Novel Object Storage v0.1.0`
+`Novel Object Storage v0.2.0`
 
 这份文档面向 CLI、脚本和 AI 代理。
 
@@ -34,9 +34,17 @@
   "docsUrl": "http://127.0.0.1:4000/api/openapi.json",
   "uiUrl": "http://127.0.0.1:4000/",
   "maxFileSize": 524288000,
+  "features": {
+    "videoTranscode": true,
+    "ffmpegAvailable": true
+  },
   "auth": ["cookie", "bearer", "x-api-key"]
 }
 ```
+
+说明：
+
+- `baseUrl` 支持域名或原始 IP（例如 `http://203.0.113.42:4000`）。`BASE_URL` 环境变量未设置时，服务启动时会自动选一个非 loopback IPv4
 
 ### `GET /api/openapi.json`
 
@@ -85,6 +93,8 @@
 ### 上传文件
 
 `POST /api/upload`
+
+> 注意：上传路径是 `/api/upload`，不是 `POST /api/files`。OpenAPI 文档里同样记在 `/api/upload`。
 
 认证：
 

@@ -1,12 +1,24 @@
 # Novel Object Storage
 
-`v0.1.0`
+`v0.2.0`
 
 轻量、自托管、CLI 优先的对象存储服务，适合小型项目、自动化代理和人工运维协作。
 
 文件直接落到磁盘，元数据保存在 JSON 中；没有 S3，没有数据库，没有额外控制面依赖。
 
-## 这版做了什么
+## 这版做了什么（v0.2.0）
+
+- 修复 OpenAPI：`POST /api/upload` 以前被错写成 `POST /api/files`，导致按 spec 生成的客户端上传 404
+- OpenAPI 文档补齐 `components.schemas` / `requestBody` / `responses` / `parameters`，可直接喂给代码生成器或 AI 代理
+- 公开端点（`/api/health`、`/api/meta`、`/api/openapi.json`、`/api/login`、`/f/*`、`/thumb/*`、`/derived/*`）显式标注无需认证
+- 支持直接用公网 IP 或局域网 IP 作为 `BASE_URL`，未显式配置时自动探测本机非 loopback IPv4
+- `/api/files` 的 `page/limit` 参数加上边界校验（`limit` 封顶 200），对缺失 `tags/description` 的遗留记录加保护
+- `/api/upload` 空请求改为返回 400
+- 文件访问走 `Object.prototype.hasOwnProperty` 白名单，阻止 `__proto__` 等特殊 key 意外命中
+- 前端上传响应解析和文件预览加空值守护，异常响应不再崩溃
+- 文档（README / docs/API.md / .env.example）同步反映上述变化
+
+## 上一版修了什么（v0.1.0）
 
 - 修复公开文件同源执行风险：危险 MIME 会强制下载，不再以内联页面执行
 - 修复管理后台文件名存储型 XSS
@@ -54,7 +66,7 @@ npm start
 |---|---|---|
 | `PORT` | `4000` | 服务端口 |
 | `HOST` | `127.0.0.1` | 监听地址 |
-| `BASE_URL` | `http://localhost:4000` | 用于生成公开 URL 和 OpenAPI server URL |
+| `BASE_URL` | 自动探测 | 用于生成公开 URL 和 OpenAPI server URL。支持域名或公网/局域网 IP（例如 `http://203.0.113.42:4000`）。未设置时自动探测本机非 loopback IPv4 |
 | `ADMIN_USERNAME` | - | 首次启动时创建管理员账号 |
 | `ADMIN_PASSWORD` | - | 首次启动时创建管理员密码 |
 | `DATA_DIR` | `./data` | 数据目录 |
@@ -70,6 +82,7 @@ npm start
 - `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 只在第一次创建 `data/auth.json` 时使用
 - 如需重置管理员账号，删除 `data/auth.json` 后重启
 - `COOKIE_SECURE` 未设置时，会根据 `BASE_URL` 自动判断；本地 `http://127.0.0.1:4000` 会自动关闭 secure cookie
+- `BASE_URL` 接受域名或原始 IP；公网部署若尚未申请域名，可直接写公网 IP，例如 `http://203.0.113.42:4000`
 - 视频转码和视频封面依赖 `ffmpeg`；如果系统里没有 `ffmpeg`，服务会自动降级为仅保存原视频
 
 ## 数据布局

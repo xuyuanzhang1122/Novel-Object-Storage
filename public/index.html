@@ -1153,7 +1153,8 @@ async function buildPreviewContent(file) {
     return wrapper;
   }
 
-  if (file.mimeType.startsWith('text/') || ['application/json'].includes(file.mimeType)) {
+  const mimeType = file.mimeType || '';
+  if (mimeType.startsWith('text/') || mimeType === 'application/json') {
     try {
       const text = await fetch(file.url).then(response => response.text());
       wrapper.append(create('pre', { className: 'preview-text mono', text: text.slice(0, 12000) }));
@@ -1383,19 +1384,18 @@ async function uploadFiles(files) {
 
   xhr.onload = async () => {
     els.uploadProgress.style.display = 'none';
+    let payload = null;
+    try { payload = JSON.parse(xhr.responseText); } catch {}
+
     if (xhr.status >= 200 && xhr.status < 300) {
       els.fileInput.value = '';
-      showToast(`上传完成，共 ${JSON.parse(xhr.responseText).files.length} 个文件`);
+      const count = payload && Array.isArray(payload.files) ? payload.files.length : 0;
+      showToast(`上传完成，共 ${count} 个文件`);
       await refreshAll(false);
       return;
     }
 
-    try {
-      const response = JSON.parse(xhr.responseText);
-      showToast(response.error || '上传失败', true);
-    } catch {
-      showToast('上传失败', true);
-    }
+    showToast((payload && payload.error) || '上传失败', true);
   };
 
   xhr.onerror = () => {

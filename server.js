@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const sharp = require('sharp');
@@ -17,7 +18,7 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = parseInt(process.env.PORT) || 4000;
 const HOST = process.env.HOST || '127.0.0.1';
-const APP_VERSION = process.env.APP_VERSION || pkg.version || '0.1.0';
+const APP_VERSION = process.env.APP_VERSION || pkg.version || '0.2.0';
 
 // --- Config from env ---
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -26,7 +27,27 @@ const THUMB_DIR = path.join(DATA_DIR, 'thumbs');
 const DERIVED_DIR = path.join(DATA_DIR, 'derived');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 const AUTH_FILE = path.join(DATA_DIR, 'auth.json');
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+function detectLanIPv4() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const net of interfaces[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) return net.address;
+    }
+  }
+  return null;
+}
+
+function resolveBaseUrl() {
+  if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/+$/, '');
+  // No domain configured — pick a reachable host so generated URLs work from other machines.
+  // Priority: HOST env if it's a routable IP, otherwise the first non-loopback IPv4, otherwise localhost.
+  const hostEnv = process.env.HOST;
+  const hostLooksRoutable = hostEnv && hostEnv !== '0.0.0.0' && hostEnv !== '127.0.0.1' && hostEnv !== 'localhost' && hostEnv !== '::';
+  const host = hostLooksRoutable ? hostEnv : (detectLanIPv4() || 'localhost');
+  return `http://${host}:${PORT}`;
+}
+
+const BASE_URL = resolveBaseUrl();
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE) || 500 * 1024 * 1024; // 500MB
 const TOKEN_EXPIRY = parseInt(process.env.TOKEN_EXPIRY) || 7 * 24 * 60 * 60 * 1000; // 7 days
 const VIDEO_TRANSCODE_ENABLED = process.env.VIDEO_TRANSCODE_ENABLED !== 'false';
@@ -423,45 +444,434 @@ app.get('/api/meta', async (req, res) => {
   });
 });
 
-app.get('/api/openapi.json', (req, res) => {
-  res.json({
-    openapi: '3.1.0',
-    info: {
-      title: 'Novel Object Storage API',
-      version: APP_VERSION,
-      description: 'CLI-oriented object storage API for human operators and automation agents.'
+const OPENAPI_SPEC = {
+  openapi: '3.1.0',
+  info: {
+    title: 'Novel Object Storage API',
+    version: APP_VERSION,
+    description: 'CLI-oriented object storage API for human operators and automation agents.'
+  },
+  servers: [{ url: BASE_URL }],
+  components: {
+    securitySchemes: {
+      bearerAuth: { type: 'http', scheme: 'bearer' },
+      apiKeyAuth: { type: 'apiKey', in: 'header', name: 'X-Api-Key' },
+      cookieAuth: { type: 'apiKey', in: 'cookie', name: 'token' }
     },
-    servers: [{ url: BASE_URL }],
-    components: {
-      securitySchemes: {
-        bearerAuth: { type: 'http', scheme: 'bearer' },
-        apiKeyAuth: { type: 'apiKey', in: 'header', name: 'X-Api-Key' },
-        cookieAuth: { type: 'apiKey', in: 'cookie', name: 'token' }
+    schemas: {
+      Error: {
+        type: 'object',
+        properties: { error: { type: 'string' } },
+        required: ['error']
+      },
+      Ok: {
+        type: 'object',
+        properties: { ok: { type: 'boolean' } },
+        required: ['ok']
+      },
+      FileEntry: {
+        type: 'object',
+        required: ['id', 'filename', 'originalName', 'mimeType', 'category', 'size', 'url', 'uploadedAt'],
+        properties: {
+          id: { type: 'string' },
+          filename: { type: 'string' },
+          originalName: { type: 'string' },
+          mimeType: { type: 'string' },
+          category: { type: 'string', enum: ['image', 'video', 'document', 'other'] },
+          size: { type: 'integer' },
+          url: { type: 'string', format: 'uri' },
+          thumbUrl: { type: ['string', 'null'], format: 'uri' },
+          previewUrl: { type: ['string', 'null'], format: 'uri' },
+          playbackUrl: { type: ['string', 'null'], format: 'uri' },
+          playbackMimeType: { type: 'string' },
+          playbackSize: { type: 'integer' },
+          derivedFilename: { type: ['string', 'null'] },
+          transcoded: { type: 'boolean' },
+          uploadedAt: { type: 'string', format: 'date-time' },
+          tags: { type: 'array', items: { type: 'string' } },
+          description: { type: 'string' }
+        }
+      },
+      FileList: {
+        type: 'object',
+        required: ['files', 'total', 'page', 'limit', 'pages'],
+        properties: {
+          files: { type: 'array', items: { $ref: '#/components/schemas/FileEntry' } },
+          total: { type: 'integer' },
+          page: { type: 'integer' },
+          limit: { type: 'integer' },
+          pages: { type: 'integer' }
+        }
+      },
+      UploadResponse: {
+        type: 'object',
+        required: ['ok', 'files'],
+        properties: {
+          ok: { type: 'boolean' },
+          files: { type: 'array', items: { $ref: '#/components/schemas/FileEntry' } }
+        }
+      },
+      ApiKeySummary: {
+        type: 'object',
+        required: ['id', 'name', 'maskedKey', 'prefix', 'createdAt'],
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+          maskedKey: { type: 'string' },
+          prefix: { type: 'string' },
+          createdAt: { type: 'string', format: 'date-time' },
+          lastUsedAt: { type: ['string', 'null'], format: 'date-time' }
+        }
+      },
+      ApiKeyCreateResponse: {
+        type: 'object',
+        required: ['ok', 'key', 'apiKey'],
+        properties: {
+          ok: { type: 'boolean' },
+          key: { type: 'string', description: 'Plaintext secret, shown only once at creation.' },
+          apiKey: { $ref: '#/components/schemas/ApiKeySummary' }
+        }
+      },
+      HealthResponse: {
+        type: 'object',
+        required: ['ok', 'version', 'time'],
+        properties: {
+          ok: { type: 'boolean' },
+          version: { type: 'string' },
+          time: { type: 'string', format: 'date-time' }
+        }
+      },
+      MetaResponse: {
+        type: 'object',
+        required: ['name', 'version', 'baseUrl', 'maxFileSize', 'auth'],
+        properties: {
+          name: { type: 'string' },
+          version: { type: 'string' },
+          baseUrl: { type: 'string', format: 'uri' },
+          docsUrl: { type: 'string', format: 'uri' },
+          uiUrl: { type: 'string', format: 'uri' },
+          maxFileSize: { type: 'integer' },
+          features: {
+            type: 'object',
+            properties: {
+              videoTranscode: { type: 'boolean' },
+              ffmpegAvailable: { type: 'boolean' }
+            }
+          },
+          auth: { type: 'array', items: { type: 'string' } }
+        }
+      },
+      StatsResponse: {
+        type: 'object',
+        required: ['totalFiles', 'totalSize', 'totalSizeHuman', 'categories'],
+        properties: {
+          totalFiles: { type: 'integer' },
+          totalSize: { type: 'integer' },
+          totalSizeHuman: { type: 'string' },
+          categories: { type: 'object', additionalProperties: { type: 'integer' } }
+        }
+      },
+      LoginRequest: {
+        type: 'object',
+        required: ['username', 'password'],
+        properties: {
+          username: { type: 'string' },
+          password: { type: 'string' }
+        }
+      },
+      LoginResponse: {
+        type: 'object',
+        required: ['ok', 'token'],
+        properties: {
+          ok: { type: 'boolean' },
+          token: { type: 'string' }
+        }
+      },
+      FilePatchRequest: {
+        type: 'object',
+        properties: {
+          tags: {
+            oneOf: [
+              { type: 'array', items: { type: 'string' } },
+              { type: 'string', description: 'Comma-separated list.' }
+            ]
+          },
+          description: { type: 'string' }
+        }
+      },
+      ApiKeyCreateRequest: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' }
+        }
       }
     },
-    security: [{ bearerAuth: [] }, { apiKeyAuth: [] }, { cookieAuth: [] }],
-    paths: {
-      '/api/health': { get: { summary: 'Health check' } },
-      '/api/meta': { get: { summary: 'Service metadata' } },
-      '/api/login': { post: { summary: 'Create a session and return a bearer token' } },
-      '/api/logout': { post: { summary: 'Revoke the current session token or cookie session' } },
-      '/api/files': {
-        get: { summary: 'List files' },
-        post: { summary: 'Upload one or more files' }
+    responses: {
+      Unauthorized: {
+        description: 'Missing or invalid credentials.',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
       },
-      '/api/files/{id}': {
-        get: { summary: 'Get file metadata' },
-        patch: { summary: 'Update file metadata' },
-        delete: { summary: 'Delete a file' }
+      NotFound: {
+        description: 'Resource not found.',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+      }
+    },
+    parameters: {
+      FileId: {
+        name: 'id', in: 'path', required: true,
+        schema: { type: 'string' }
       },
-      '/api/stats': { get: { summary: 'Get storage statistics' } },
-      '/api/keys': {
-        get: { summary: 'List API keys' },
-        post: { summary: 'Create an API key' }
-      },
-      '/api/keys/{id}': { delete: { summary: 'Revoke an API key by id' } }
+      ApiKeyId: {
+        name: 'id', in: 'path', required: true,
+        schema: { type: 'string' }
+      }
     }
-  });
+  },
+  security: [{ bearerAuth: [] }, { apiKeyAuth: [] }, { cookieAuth: [] }],
+  paths: {
+    '/api/health': {
+      get: {
+        summary: 'Health check',
+        security: [],
+        responses: {
+          '200': {
+            description: 'Service is up.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/HealthResponse' } } }
+          }
+        }
+      }
+    },
+    '/api/meta': {
+      get: {
+        summary: 'Service metadata',
+        security: [],
+        responses: {
+          '200': {
+            description: 'Runtime configuration and feature flags.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/MetaResponse' } } }
+          }
+        }
+      }
+    },
+    '/api/openapi.json': {
+      get: {
+        summary: 'OpenAPI 3.1 document',
+        security: [],
+        responses: { '200': { description: 'OpenAPI document.' } }
+      }
+    },
+    '/api/login': {
+      post: {
+        summary: 'Create a session and return a bearer token',
+        security: [],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginRequest' } } }
+        },
+        responses: {
+          '200': {
+            description: 'Login succeeded.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginResponse' } } }
+          },
+          '401': { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
+    '/api/logout': {
+      post: {
+        summary: 'Revoke the current session token or cookie session',
+        responses: {
+          '200': {
+            description: 'Session revoked.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Ok' } } }
+          }
+        }
+      }
+    },
+    '/api/upload': {
+      post: {
+        summary: 'Upload one or more files',
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['files'],
+                properties: {
+                  files: {
+                    type: 'array',
+                    items: { type: 'string', format: 'binary' },
+                    description: 'One or more files (field name must be "files").'
+                  },
+                  tags: { type: 'string', description: 'Comma-separated tags applied to every uploaded file.' },
+                  description: { type: 'string' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Files uploaded.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/UploadResponse' } } }
+          },
+          '400': { description: 'No files supplied or invalid request.' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '413': { description: 'File exceeds MAX_FILE_SIZE.' }
+        }
+      }
+    },
+    '/api/files': {
+      get: {
+        summary: 'List files',
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } },
+          { name: 'category', in: 'query', schema: { type: 'string', enum: ['image', 'video', 'document', 'other'] } },
+          { name: 'tag', in: 'query', schema: { type: 'string' } },
+          { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Search filename, description, tags.' }
+        ],
+        responses: {
+          '200': {
+            description: 'Paginated list of files.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/FileList' } } }
+          },
+          '401': { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
+    '/api/files/{id}': {
+      get: {
+        summary: 'Get file metadata',
+        parameters: [{ $ref: '#/components/parameters/FileId' }],
+        responses: {
+          '200': {
+            description: 'File metadata.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/FileEntry' } } }
+          },
+          '404': { $ref: '#/components/responses/NotFound' }
+        }
+      },
+      patch: {
+        summary: 'Update file metadata',
+        parameters: [{ $ref: '#/components/parameters/FileId' }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/FilePatchRequest' } } }
+        },
+        responses: {
+          '200': {
+            description: 'Updated file metadata.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/FileEntry' } } }
+          },
+          '404': { $ref: '#/components/responses/NotFound' }
+        }
+      },
+      delete: {
+        summary: 'Delete a file',
+        parameters: [{ $ref: '#/components/parameters/FileId' }],
+        responses: {
+          '200': {
+            description: 'File deleted.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Ok' } } }
+          },
+          '404': { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/api/stats': {
+      get: {
+        summary: 'Get storage statistics',
+        responses: {
+          '200': {
+            description: 'Aggregate statistics.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/StatsResponse' } } }
+          },
+          '401': { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
+    '/api/keys': {
+      get: {
+        summary: 'List API keys',
+        responses: {
+          '200': {
+            description: 'API key summaries (hash and plaintext are not returned).',
+            content: { 'application/json': {
+              schema: {
+                type: 'object',
+                required: ['keys'],
+                properties: { keys: { type: 'array', items: { $ref: '#/components/schemas/ApiKeySummary' } } }
+              }
+            } }
+          }
+        }
+      },
+      post: {
+        summary: 'Create an API key',
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiKeyCreateRequest' } } }
+        },
+        responses: {
+          '201': {
+            description: 'API key created. Plaintext secret is returned only once.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiKeyCreateResponse' } } }
+          }
+        }
+      }
+    },
+    '/api/keys/{id}': {
+      delete: {
+        summary: 'Revoke an API key by id',
+        parameters: [{ $ref: '#/components/parameters/ApiKeyId' }],
+        responses: {
+          '200': {
+            description: 'Key revoked.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Ok' } } }
+          },
+          '404': { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/f/{filename}': {
+      get: {
+        summary: 'Download the raw public object',
+        security: [],
+        parameters: [{ name: 'filename', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Binary file. Supports Range requests.' },
+          '404': { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/thumb/{filename}': {
+      get: {
+        summary: 'Fetch a generated image/video thumbnail',
+        security: [],
+        parameters: [{ name: 'filename', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'JPEG thumbnail.' },
+          '404': { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/derived/{filename}': {
+      get: {
+        summary: 'Fetch a transcoded MP4 derivative',
+        security: [],
+        parameters: [{ name: 'filename', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Derived MP4 file. Supports Range requests.' },
+          '404': { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    }
+  }
+};
+
+app.get('/api/openapi.json', (req, res) => {
+  res.json(OPENAPI_SPEC);
 });
 
 // Serve files publicly
@@ -574,6 +984,9 @@ app.delete('/api/keys/:id', authMiddleware, async (req, res) => {
 // ==================== API ROUTES (AUTH REQUIRED) ====================
 
 app.post('/api/upload', authMiddleware, upload.array('files', 50), async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: 'No files supplied. Attach at least one file under the "files" field.' });
+  }
   const tags = typeof req.body.tags === 'string'
     ? req.body.tags.split(',').map(t => t.trim()).filter(Boolean)
     : [];
@@ -649,56 +1062,67 @@ app.post('/api/upload', authMiddleware, upload.array('files', 50), async (req, r
 app.get('/api/files', authMiddleware, (req, res) => {
   const db = loadDB();
   let files = Object.values(db.files);
-  
+
   if (req.query.category) files = files.filter(f => f.category === req.query.category);
-  if (req.query.tag) files = files.filter(f => f.tags.includes(req.query.tag));
+  if (req.query.tag) {
+    const tag = req.query.tag;
+    files = files.filter(f => Array.isArray(f.tags) && f.tags.includes(tag));
+  }
   if (req.query.q) {
-    const q = req.query.q.toLowerCase();
-    files = files.filter(f => 
-      f.originalName.toLowerCase().includes(q) || 
-      f.description.toLowerCase().includes(q) ||
-      f.tags.some(t => t.toLowerCase().includes(q))
+    const q = String(req.query.q).toLowerCase();
+    files = files.filter(f =>
+      (f.originalName || '').toLowerCase().includes(q) ||
+      (f.description || '').toLowerCase().includes(q) ||
+      (Array.isArray(f.tags) && f.tags.some(t => String(t).toLowerCase().includes(q)))
     );
   }
 
   files.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
 
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 50;
+  const pageRaw = parseInt(req.query.page, 10);
+  const limitRaw = parseInt(req.query.limit, 10);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 200) : 50;
   const total = files.length;
   files = files.slice((page - 1) * limit, page * limit);
 
-  res.json({ files, total, page, limit, pages: Math.ceil(total / limit) });
+  res.json({ files, total, page, limit, pages: Math.max(1, Math.ceil(total / limit)) });
 });
+
+function getFile(db, id) {
+  return Object.prototype.hasOwnProperty.call(db.files, id) ? db.files[id] : null;
+}
 
 app.get('/api/files/:id', authMiddleware, (req, res) => {
   const db = loadDB();
-  const file = db.files[req.params.id];
+  const file = getFile(db, req.params.id);
   if (!file) return res.status(404).json({ error: 'Not found' });
   res.json(file);
 });
 
-app.patch('/api/files/:id', authMiddleware, (req, res) => {
+app.patch('/api/files/:id', authMiddleware, async (req, res) => {
   const tags = req.body.tags;
   const description = req.body.description;
-  const file = mutateDB(db => {
-    const record = db.files[req.params.id];
-    if (!record) return null;
-    if (Array.isArray(tags)) record.tags = tags.map(tag => String(tag).trim()).filter(Boolean);
-    if (typeof tags === 'string') record.tags = tags.split(',').map(tag => tag.trim()).filter(Boolean);
-    if (description !== undefined) record.description = String(description).trim();
-    addPreviewMetadata(record);
-    return record;
-  });
-  return file.then(updated => {
+  try {
+    const updated = await mutateDB(db => {
+      const record = getFile(db, req.params.id);
+      if (!record) return null;
+      if (Array.isArray(tags)) record.tags = tags.map(tag => String(tag).trim()).filter(Boolean);
+      else if (typeof tags === 'string') record.tags = tags.split(',').map(tag => tag.trim()).filter(Boolean);
+      if (description !== undefined) record.description = String(description).trim();
+      addPreviewMetadata(record);
+      return record;
+    });
     if (!updated) return res.status(404).json({ error: 'Not found' });
     res.json(updated);
-  }).catch(() => res.status(500).json({ error: 'Failed to update file' }));
+  } catch {
+    res.status(500).json({ error: 'Failed to update file' });
+  }
 });
 
 app.delete('/api/files/:id', authMiddleware, async (req, res) => {
   const file = await mutateDB(db => {
-    const record = db.files[req.params.id];
+    const record = getFile(db, req.params.id);
     if (!record) return null;
     db.stats.totalFiles = Math.max(0, db.stats.totalFiles - 1);
     db.stats.totalSize = Math.max(0, db.stats.totalSize - record.size - (record.playbackSize || 0));
@@ -752,7 +1176,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Image Store running on ${HOST}:${PORT}`);
-  console.log(`Public URL: ${BASE_URL}`);
+  console.log(`Novel Object Storage running on ${HOST}:${PORT}`);
+  console.log(`Public URL: ${BASE_URL}${process.env.BASE_URL ? '' : ' (auto-detected — set BASE_URL to override)'}`);
   console.log(`Version: ${APP_VERSION}`);
 });
